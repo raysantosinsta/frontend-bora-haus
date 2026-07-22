@@ -1,5 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3334';
 
+// lib/api.ts
 export interface Product {
   id: string;
   name: string;
@@ -7,8 +8,9 @@ export interface Product {
   price: number | null;
   type: 'digital' | 'affiliate';
   affiliate_url: string;
-  image_path: string;
-  image_url: string; // Já vem enriquecido do backend
+  image_path: string;        // caminho da imagem principal (deprecated, mas mantido)
+  image_url: string;         // URL da primeira imagem (capa)
+  images: string[];          // 🆕 array com todas as URLs das imagens
   clicks_total: number;
   created_at: string;
 }

@@ -38,7 +38,7 @@ const openSans = Open_Sans({
 });
 
 // ============================================================
-// 2. INTERFACE (sem badge)
+// 2. INTERFACE (com images)
 // ============================================================
 export interface Product {
   id: string;
@@ -48,7 +48,8 @@ export interface Product {
   type: "digital" | "affiliate";
   affiliate_url: string;
   image_path: string;
-  image_url: string;
+  image_url: string; // capa (primeira imagem)
+  images: string[]; // array com todas as URLs das imagens
   clicks_total: number;
   created_at: string;
 }
@@ -181,8 +182,17 @@ const testimonials = [
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Índice do slide principal (entre produtos)
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [currentTestimonial, setCurrentTestimonial] = useState(0); // 👈 novo
+
+  // Índice da imagem interna de cada produto (chave = productId, valor = índice)
+  const [productImageIndexes, setProductImageIndexes] = useState<
+    Record<string, number>
+  >({});
+
+  // Índice do carrossel de depoimentos
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
   const [timeLeft, setTimeLeft] = useState({
     hours: 47,
@@ -195,6 +205,12 @@ export default function HomePage() {
       try {
         const data = await fetchProducts();
         setProducts(data);
+        // Inicializar índices de imagem para cada produto
+        const initialIndexes: Record<string, number> = {};
+        data.forEach((p) => {
+          initialIndexes[p.id] = 0;
+        });
+        setProductImageIndexes(initialIndexes);
       } catch (error) {
         console.error("Erro ao carregar produtos:", error);
       } finally {
@@ -235,8 +251,29 @@ export default function HomePage() {
     );
   };
 
+  // Funções para navegar nas imagens internas de um produto
+  const changeProductImage = (productId: string, newIndex: number) => {
+    setProductImageIndexes((prev) => ({
+      ...prev,
+      [productId]: newIndex,
+    }));
+  };
+
+  const getCurrentImageIndex = (productId: string): number => {
+    return productImageIndexes[productId] || 0;
+  };
+
   const groups: Group[] = [
     { name: "BTS", logoText: "BTS", color: "from-purple-900 to-indigo-900" },
+    { name: "Stray Kids", logoText: "SKZ", color: "from-red-900 to-zinc-900" },
+    {
+      name: "BLACKPINK",
+      logoText: "BP",
+      color: "from-pink-900 to-neutral-900",
+    },
+    { name: "NewJeans", logoText: "NJ", color: "from-blue-900 to-cyan-900" },
+    { name: "SEVENTEEN", logoText: "SVT", color: "from-sky-900 to-blue-950" },
+    { name: "TWICE", logoText: "TW", color: "from-orange-900 to-amber-950" },
   ];
 
   const handleAffiliateClick = (product: Product) => {
@@ -255,7 +292,7 @@ export default function HomePage() {
         style={{ fontFamily: "var(--font-open-sans)" }}
       >
         {/* ============================================================
-            1. HERO – Vídeo + Carrossel premium (sem textos)
+            1. HERO – Vídeo + Carrossel com imagens múltiplas por produto
             ============================================================ */}
         <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
           {/* Vídeo de fundo */}
@@ -287,53 +324,146 @@ export default function HomePage() {
                     className="flex transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)]"
                     style={{ transform: `translateX(-${currentSlide * 100}%)` }}
                   >
-                    {heroProducts.map((product) => (
-                      <div
-                        key={product.id}
-                        className="min-w-full flex justify-center items-center px-4"
-                      >
-                        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 w-full max-w-3xl mx-auto">
-                          {/* Imagem do produto */}
-                          <div className="relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl overflow-hidden flex-shrink-0 bg-zinc-800/50 shadow-2xl ring-1 ring-white/10 hover:ring-pink-500/50 transition-all duration-500 group">
-                            <Image
-                              src={product.image_url}
-                              alt={product.name}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-700"
-                              priority
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                          </div>
+                    {heroProducts.map((product) => {
+                      // Garantir que images seja um array válido
+                      const rawImages =
+                        product.images && product.images.length > 0
+                          ? product.images
+                          : [product.image_url].filter(Boolean);
 
-                          {/* Informações do produto */}
-                          <div className="flex-1 text-center md:text-left text-white">
-                            <h3
-                              className="text-2xl sm:text-3xl md:text-4xl font-bold line-clamp-2 mb-2"
-                              style={{ fontFamily: "var(--font-montserrat)" }}
-                            >
-                              {product.name}
-                            </h3>
-                            <div className="flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
-                              <span className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
-                                {product.price
-                                  ? `R$ ${product.price.toFixed(2)}`
-                                  : "Consulte"}
-                              </span>
-                              <button
-                                onClick={() => handleAffiliateClick(product)}
-                                className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-base font-bold px-8 py-3 rounded-full transition-all shadow-lg shadow-pink-600/30 hover:shadow-pink-600/50 hover:scale-105 flex items-center gap-2"
-                              >
-                                Comprar Agora
-                                <ArrowRight className="w-5 h-5" />
-                              </button>
+                      // Se ainda estiver vazio, usar placeholder
+                      const productImages =
+                        rawImages.length > 0 ? rawImages : ["/placeholder.png"];
+
+                      const currentImgIndex = getCurrentImageIndex(product.id);
+                      // Garantir que o índice esteja dentro do array
+                      const safeIndex = Math.min(
+                        currentImgIndex,
+                        productImages.length - 1,
+                      );
+                      const currentImage =
+                        productImages[safeIndex] ||
+                        productImages[0] ||
+                        "/placeholder.png";
+
+                      return (
+                        <div
+                          key={product.id}
+                          className="min-w-full flex justify-center items-center px-4"
+                        >
+                          <div
+                            key={product.id}
+                            className="min-w-full flex justify-center items-center px-4"
+                          >
+                            <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 w-full max-w-3xl mx-auto">
+                              {/* Imagem do produto com carrossel interno */}
+                              <div className="relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl overflow-hidden flex-shrink-0 bg-zinc-800/50 shadow-2xl ring-1 ring-white/10 group">
+                                <Image
+                                  src={currentImage}
+                                  alt={product.name}
+                                  fill
+                                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                  priority
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-transparent via-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                                {/* Mini setas internas (se houver mais de 1 imagem) */}
+                                {productImages.length > 1 && (
+                                  <>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newIndex =
+                                          currentImgIndex - 1 < 0
+                                            ? productImages.length - 1
+                                            : currentImgIndex - 1;
+                                        changeProductImage(
+                                          product.id,
+                                          newIndex,
+                                        );
+                                      }}
+                                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
+                                    >
+                                      <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newIndex =
+                                          (currentImgIndex + 1) %
+                                          productImages.length;
+                                        changeProductImage(
+                                          product.id,
+                                          newIndex,
+                                        );
+                                      }}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
+                                    >
+                                      <ChevronRight className="w-4 h-4" />
+                                    </button>
+
+                                    {/* Dots internos (indicadores de imagem) */}
+                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                      {productImages.map((_, idx) => (
+                                        <button
+                                          key={idx}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            changeProductImage(product.id, idx);
+                                          }}
+                                          className={`h-1.5 rounded-full transition-all ${
+                                            idx === currentImgIndex
+                                              ? "w-4 bg-pink-400"
+                                              : "w-1.5 bg-white/40 hover:bg-white/60"
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
+
+                                    {/* Contador de imagens (ex: 2/5) */}
+                                    <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                      {currentImgIndex + 1}/
+                                      {productImages.length}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Informações do produto */}
+                              <div className="flex-1 text-center md:text-left text-white">
+                                <h3
+                                  className="text-2xl sm:text-3xl md:text-4xl font-bold line-clamp-2 mb-2"
+                                  style={{
+                                    fontFamily: "var(--font-montserrat)",
+                                  }}
+                                >
+                                  {product.name}
+                                </h3>
+                                <div className="flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
+                                  <span className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
+                                    {product.price
+                                      ? `R$ ${product.price.toFixed(2)}`
+                                      : "Consulte"}
+                                  </span>
+                                  <button
+                                    onClick={() =>
+                                      handleAffiliateClick(product)
+                                    }
+                                    className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-base font-bold px-8 py-3 rounded-full transition-all shadow-lg shadow-pink-600/30 hover:shadow-pink-600/50 hover:scale-105 flex items-center gap-2"
+                                  >
+                                    Comprar Agora
+                                    <ArrowRight className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
-                  {/* Setas de navegação */}
+                  {/* Setas de navegação entre produtos (já existentes) */}
                   {heroProducts.length > 1 && (
                     <>
                       <button
@@ -352,7 +482,7 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* Indicadores (dots) */}
+                {/* Dots de navegação entre produtos */}
                 <div className="flex justify-center gap-3 mt-6">
                   {heroProducts.map((_, idx) => (
                     <button
@@ -371,7 +501,7 @@ export default function HomePage() {
                   ))}
                 </div>
 
-                {/* Contador de slides */}
+                {/* Contador de produtos */}
                 <div className="text-center mt-4 text-white/40 text-sm font-medium tracking-wider">
                   {currentSlide + 1} / {heroProducts.length}
                 </div>
@@ -385,26 +515,38 @@ export default function HomePage() {
         </section>
 
         {/* 2. BARRA DE CONFIANÇA – Afiliados + Produtos Digitais */}
-<section className="border-y border-zinc-800 bg-zinc-900/50 py-4 backdrop-blur-sm animate-fade-in">
-  <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-    {[
-      { icon: <ShieldCheck className="w-4 h-4 text-pink-500" />, label: "Parceiros Confiáveis" },
-      { icon: <Truck className="w-4 h-4 text-pink-500" />, label: "Frete Rastreado" },
-      { icon: <Package className="w-4 h-4 text-pink-500" />, label: "Produtos Originais" },
-      { icon: <Sparkles className="w-4 h-4 text-pink-500" />, label: "Download Imediato" },
-    ].map((item, idx) => (
-      <div
-        key={idx}
-        className="flex items-center justify-center gap-2 text-zinc-300 text-sm font-medium hover:text-white transition-colors duration-300"
-      >
-        {item.icon} {item.label}
-      </div>
-    ))}
-  </div>
-</section>
+        <section className="border-y border-zinc-800 bg-zinc-900/50 py-4 backdrop-blur-sm animate-fade-in">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            {[
+              {
+                icon: <ShieldCheck className="w-4 h-4 text-pink-500" />,
+                label: "Parceiros Confiáveis",
+              },
+              {
+                icon: <Truck className="w-4 h-4 text-pink-500" />,
+                label: "Frete Rastreado",
+              },
+              {
+                icon: <Package className="w-4 h-4 text-pink-500" />,
+                label: "Produtos Originais",
+              },
+              {
+                icon: <Sparkles className="w-4 h-4 text-pink-500" />,
+                label: "Download Imediato",
+              },
+            ].map((item, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-center gap-2 text-zinc-300 text-sm font-medium hover:text-white transition-colors duration-300"
+              >
+                {item.icon} {item.label}
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ============================================================
-            3. COMEBACKS & LANÇAMENTOS (filtrados, sem badge)
+            3. COMEBACKS & LANÇAMENTOS (filtrados)
             ============================================================ */}
         <section id="produtos" className="py-20 max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4 animate-fade-in-up">
@@ -548,8 +690,8 @@ export default function HomePage() {
         </section>
 
         {/* ============================================================
-    5. PROVA SOCIAL – Carrossel com imagens reais (10+ depoimentos)
-    ============================================================ */}
+            5. PROVA SOCIAL – Carrossel com imagens reais
+            ============================================================ */}
         <section className="py-20 max-w-7xl mx-auto px-4">
           <div className="text-center max-w-xl mx-auto mb-12 animate-fade-in-up">
             <span className="text-pink-500 font-semibold uppercase tracking-wider text-sm">
@@ -650,51 +792,51 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ============================================================
-            6. BENEFÍCIOS DETALHADOS
-            ============================================================ */}
-        <section className="py-16 bg-zinc-900/20 border-t border-zinc-800">
-          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Package className="w-6 h-6" />,
-                title: "Caixas Estruturadas",
-                desc: "Usamos reforços em papelão duplo para proteger álbuns e photocards contra qualquer impacto no transporte.",
-              },
-              {
-                icon: <ShieldCheck className="w-6 h-6" />,
-                title: "Parceiros Oficiais",
-                desc: "Curadoria estritamente focada em fornecedores confiáveis da Coreia do Sul, garantindo contagem em charts oficiais (Hanteo/Gaon).",
-              },
-              {
-                icon: <CheckCircle2 className="w-6 h-6" />,
-                title: "Suporte Dedicado",
-                desc: "Atendimento humanizado via WhatsApp e Telegram para tirar dúvidas sobre rastreio e aberturas de pacotes.",
-              },
-            ].map((item, idx) => (
-              <div
-                key={idx}
-                className="flex gap-4 group hover:bg-zinc-800/30 p-4 rounded-xl transition-all duration-300 animate-fade-in-up"
-                style={{ animationDelay: `${idx * 0.1}s` }}
-              >
-                <div className="w-12 h-12 rounded-xl bg-pink-600/10 border border-pink-500/20 flex items-center justify-center shrink-0 text-pink-400 group-hover:bg-pink-600/20 group-hover:border-pink-500/40 transition-all group-hover:scale-110">
-                  {item.icon}
-                </div>
-                <div>
-                  <h3
-                    className="font-semibold text-lg text-white mb-1 group-hover:text-pink-400 transition-colors"
-                    style={{ fontFamily: "var(--font-montserrat)" }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p className="text-zinc-400 text-sm group-hover:text-zinc-300 transition-colors">
-                    {item.desc}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+       {/* ============================================================
+    6. BENEFÍCIOS DETALHADOS – Afiliados + Produtos Digitais
+    ============================================================ */}
+<section className="py-16 bg-zinc-900/20 border-t border-zinc-800">
+  <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+    {[
+      {
+        icon: <ShieldCheck className="w-6 h-6" />,
+        title: "Parceiros Confiáveis",
+        desc: "Trabalhamos com Amazon, Shopee e Hotmart – plataformas seguras com política de reembolso, compra protegida e pagamentos via Pix, cartão ou boleto.",
+      },
+      {
+        icon: <Package className="w-6 h-6" />,
+        title: "Produtos Verificados",
+        desc: "Todos os links levam a vendedores oficiais com alta reputação. Produtos originais, físicos ou digitais, com garantia e suporte das próprias plataformas.",
+      },
+      {
+        icon: <CheckCircle2 className="w-6 h-6" />,
+        title: "Suporte Rápido",
+        desc: "Tire suas dúvidas sobre produtos, rastreio de pedidos ou downloads com nosso atendimento humanizado via WhatsApp e e-mail, de segunda a sexta.",
+      },
+    ].map((item, idx) => (
+      <div
+        key={idx}
+        className="flex gap-4 group hover:bg-zinc-800/30 p-4 rounded-xl transition-all duration-300 animate-fade-in-up"
+        style={{ animationDelay: `${idx * 0.1}s` }}
+      >
+        <div className="w-12 h-12 rounded-xl bg-pink-600/10 border border-pink-500/20 flex items-center justify-center shrink-0 text-pink-400 group-hover:bg-pink-600/20 group-hover:border-pink-500/40 transition-all group-hover:scale-110">
+          {item.icon}
+        </div>
+        <div>
+          <h3
+            className="font-semibold text-lg text-white mb-1 group-hover:text-pink-400 transition-colors"
+            style={{ fontFamily: "var(--font-montserrat)" }}
+          >
+            {item.title}
+          </h3>
+          <p className="text-zinc-400 text-sm group-hover:text-zinc-300 transition-colors">
+            {item.desc}
+          </p>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
 
         {/* ============================================================
             7. CTA FINAL / LISTA DE ESPERA
@@ -749,13 +891,13 @@ export default function HomePage() {
                 className="font-bold text-white tracking-wider"
                 style={{ fontFamily: "var(--font-montserrat)" }}
               >
-                K-POP VAULT
+                BORA HAUS
               </span>
               <p className="text-xs mt-1">
                 Sua curadoria definitiva de K-pop e colecionáveis.
               </p>
             </div>
-            <div className="flex gap-6 text-zinc-400">
+            {/* <div className="flex gap-6 text-zinc-400">
               <a
                 href="#termos"
                 className="hover:text-pink-500 transition-colors"
@@ -774,9 +916,9 @@ export default function HomePage() {
               >
                 Contato
               </a>
-            </div>
+            </div> */}
             <p className="text-xs">
-              © 2026 K-Pop Vault. Todos os direitos reservados.
+              © 2026 BORA HAUS. Todos os direitos reservados.
             </p>
           </div>
         </footer>

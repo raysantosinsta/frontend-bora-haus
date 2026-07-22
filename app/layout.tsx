@@ -15,7 +15,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "K-Pop Vault – Loja de K-pop confiável",
+  title: "BORA HAUS – Loja de K-pop confiável",
   description: "Compre álbuns, photocards e produtos digitais de K-pop com segurança via Amazon, Shopee e Hotmart.",
 };
 

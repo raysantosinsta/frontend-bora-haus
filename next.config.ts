@@ -5,9 +5,10 @@ const nextConfig = {
       // 🔹 Permite imagens do Supabase (já existente)
       {
         protocol: 'https',
-        hostname: '**.supabase.co',
+              hostname: 'inxltoftznrlihdmgwui.supabase.co',
+
         port: '',
-        pathname: '/storage/v1/object/public/**',
+        pathname: '/storage/v1/object/public/products/**',
       },
       // 🔹 Permite imagens do Unsplash (novo – para os depoimentos)
       {
