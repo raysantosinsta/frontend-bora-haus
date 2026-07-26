@@ -19,6 +19,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { fetchProducts } from "./lib/api";
+import { useRouter } from "next/navigation";
 
 // ============================================================
 // 1. FONTES (via next/font)
@@ -200,6 +201,21 @@ export default function HomePage() {
     seconds: 15,
   });
 
+  const [email, setEmail] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(false);
+  const [heroVisible, setHeroVisible] = useState(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setHeroVisible(true);
+    }, 2500); // 2,5 segundos
+
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     async function loadProducts() {
       try {
@@ -238,6 +254,52 @@ export default function HomePage() {
     return desc.includes("comebacks") || desc.includes("pré-vendas");
   });
 
+  const handleSubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // Validação básica
+    if (!email || !email.includes("@")) {
+      setError(true);
+      setTimeout(() => setError(false), 3000);
+      return;
+    }
+
+    setLoading(true);
+    setError(false);
+    setSuccess(false);
+
+    try {
+      const response = await fetch("https://formspree.io/f/mdarboqa", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          // Opcional: adicione mais campos se quiser
+          // name: "Visitante",
+          // source: "site_principal",
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (response.ok) {
+        setSuccess(true);
+        setEmail(""); // limpa o campo
+        setTimeout(() => setSuccess(false), 5000);
+      } else {
+        throw new Error("Erro no servidor");
+      }
+    } catch (err) {
+      console.error("Erro ao enviar:", err);
+      setError(true);
+      setTimeout(() => setError(false), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 10 primeiros produtos para o carrossel do Hero
   const heroProducts = products.slice(0, 10);
 
@@ -266,14 +328,14 @@ export default function HomePage() {
   const groups: Group[] = [
     { name: "BTS", logoText: "BTS", color: "from-purple-900 to-indigo-900" },
     { name: "Stray Kids", logoText: "SKZ", color: "from-red-900 to-zinc-900" },
-    {
-      name: "BLACKPINK",
-      logoText: "BP",
-      color: "from-pink-900 to-neutral-900",
-    },
-    { name: "NewJeans", logoText: "NJ", color: "from-blue-900 to-cyan-900" },
-    { name: "SEVENTEEN", logoText: "SVT", color: "from-sky-900 to-blue-950" },
-    { name: "TWICE", logoText: "TW", color: "from-orange-900 to-amber-950" },
+    // {
+    //   name: "BLACKPINK",
+    //   logoText: "BP",
+    //   color: "from-pink-900 to-neutral-900",
+    // },
+    // { name: "NewJeans", logoText: "NJ", color: "from-blue-900 to-cyan-900" },
+    // { name: "SEVENTEEN", logoText: "SVT", color: "from-sky-900 to-blue-950" },
+    // { name: "TWICE", logoText: "TW", color: "from-orange-900 to-amber-950" },
   ];
 
   const handleAffiliateClick = (product: Product) => {
@@ -292,8 +354,8 @@ export default function HomePage() {
         style={{ fontFamily: "var(--font-open-sans)" }}
       >
         {/* ============================================================
-            1. HERO – Vídeo + Carrossel com imagens múltiplas por produto
-            ============================================================ */}
+    1. HERO – Vídeo + Carrossel com imagens múltiplas por produto
+    ============================================================ */}
         <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
           {/* Vídeo de fundo */}
           <video
@@ -317,8 +379,8 @@ export default function HomePage() {
 
           {/* Carrossel centralizado */}
           <div className="relative z-20 w-full max-w-6xl mx-auto px-4 sm:px-6">
-            {!loading && heroProducts.length > 0 ? (
-              <div className="relative">
+            {!loading && heroVisible && heroProducts.length > 0 ? (
+              <div className="relative animate-fade-in">
                 <div className="relative overflow-hidden rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl p-6 md:p-8">
                   <div
                     className="flex transition-transform duration-700 ease-[cubic-bezier(0.65,0,0.35,1)]"
@@ -351,110 +413,96 @@ export default function HomePage() {
                           key={product.id}
                           className="min-w-full flex justify-center items-center px-4"
                         >
-                          <div
-                            key={product.id}
-                            className="min-w-full flex justify-center items-center px-4"
-                          >
-                            <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 w-full max-w-3xl mx-auto">
-                              {/* Imagem do produto com carrossel interno */}
-                              <div className="relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl overflow-hidden flex-shrink-0 bg-zinc-800/50 shadow-2xl ring-1 ring-white/10 group">
-                                <Image
-                                  src={currentImage}
-                                  alt={product.name}
-                                  fill
-                                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                  priority
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-transparent via-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 w-full max-w-3xl mx-auto">
+                            {/* Imagem do produto com carrossel interno */}
+                            <div className="relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl overflow-hidden flex-shrink-0 bg-zinc-800/50 shadow-2xl ring-1 ring-white/10 group">
+                              <Image
+                                src={currentImage}
+                                alt={product.name}
+                                fill
+                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                priority
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-transparent via-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                                {/* Mini setas internas (se houver mais de 1 imagem) */}
-                                {productImages.length > 1 && (
-                                  <>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const newIndex =
-                                          currentImgIndex - 1 < 0
-                                            ? productImages.length - 1
-                                            : currentImgIndex - 1;
-                                        changeProductImage(
-                                          product.id,
-                                          newIndex,
-                                        );
-                                      }}
-                                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
-                                    >
-                                      <ChevronLeft className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const newIndex =
-                                          (currentImgIndex + 1) %
-                                          productImages.length;
-                                        changeProductImage(
-                                          product.id,
-                                          newIndex,
-                                        );
-                                      }}
-                                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
-                                    >
-                                      <ChevronRight className="w-4 h-4" />
-                                    </button>
-
-                                    {/* Dots internos (indicadores de imagem) */}
-                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                                      {productImages.map((_, idx) => (
-                                        <button
-                                          key={idx}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            changeProductImage(product.id, idx);
-                                          }}
-                                          className={`h-1.5 rounded-full transition-all ${
-                                            idx === currentImgIndex
-                                              ? "w-4 bg-pink-400"
-                                              : "w-1.5 bg-white/40 hover:bg-white/60"
-                                          }`}
-                                        />
-                                      ))}
-                                    </div>
-
-                                    {/* Contador de imagens (ex: 2/5) */}
-                                    <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
-                                      {currentImgIndex + 1}/
-                                      {productImages.length}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Informações do produto */}
-                              <div className="flex-1 text-center md:text-left text-white">
-                                <h3
-                                  className="text-2xl sm:text-3xl md:text-4xl font-bold line-clamp-2 mb-2"
-                                  style={{
-                                    fontFamily: "var(--font-montserrat)",
-                                  }}
-                                >
-                                  {product.name}
-                                </h3>
-                                <div className="flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
-                                  <span className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
-                                    {product.price
-                                      ? `R$ ${product.price.toFixed(2)}`
-                                      : "Consulte"}
-                                  </span>
+                              {/* Mini setas internas (se houver mais de 1 imagem) */}
+                              {productImages.length > 1 && (
+                                <>
                                   <button
-                                    onClick={() =>
-                                      handleAffiliateClick(product)
-                                    }
-                                    className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-base font-bold px-8 py-3 rounded-full transition-all shadow-lg shadow-pink-600/30 hover:shadow-pink-600/50 hover:scale-105 flex items-center gap-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const newIndex =
+                                        currentImgIndex - 1 < 0
+                                          ? productImages.length - 1
+                                          : currentImgIndex - 1;
+                                      changeProductImage(product.id, newIndex);
+                                    }}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
                                   >
-                                    Comprar Agora
-                                    <ArrowRight className="w-5 h-5" />
+                                    <ChevronLeft className="w-4 h-4" />
                                   </button>
-                                </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const newIndex =
+                                        (currentImgIndex + 1) %
+                                        productImages.length;
+                                      changeProductImage(product.id, newIndex);
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
+                                  >
+                                    <ChevronRight className="w-4 h-4" />
+                                  </button>
+
+                                  {/* Dots internos (indicadores de imagem) */}
+                                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                    {productImages.map((_, idx) => (
+                                      <button
+                                        key={idx}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          changeProductImage(product.id, idx);
+                                        }}
+                                        className={`h-1.5 rounded-full transition-all ${
+                                          idx === currentImgIndex
+                                            ? "w-4 bg-pink-400"
+                                            : "w-1.5 bg-white/40 hover:bg-white/60"
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+
+                                  {/* Contador de imagens (ex: 2/5) */}
+                                  <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
+                                    {currentImgIndex + 1}/{productImages.length}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Informações do produto */}
+                            <div className="flex-1 text-center md:text-left text-white">
+                              <h3
+                                className="text-2xl sm:text-3xl md:text-4xl font-bold line-clamp-2 mb-2"
+                                style={{
+                                  fontFamily: "var(--font-montserrat)",
+                                }}
+                              >
+                                {product.name}
+                              </h3>
+                              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
+                                <span className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">
+                                  {product.price
+                                    ? `R$ ${product.price.toFixed(2)}`
+                                    : "Consulte"}
+                                </span>
+                                <button
+                                  onClick={() => handleAffiliateClick(product)}
+                                  className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-base font-bold px-8 py-3 rounded-full transition-all shadow-lg shadow-pink-600/30 hover:shadow-pink-600/50 hover:scale-105 flex items-center gap-2"
+                                >
+                                  Comprar Agora
+                                  <ArrowRight className="w-5 h-5" />
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -463,7 +511,7 @@ export default function HomePage() {
                     })}
                   </div>
 
-                  {/* Setas de navegação entre produtos (já existentes) */}
+                  {/* Setas de navegação entre produtos */}
                   {heroProducts.length > 1 && (
                     <>
                       <button
@@ -508,7 +556,7 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="text-white/50 text-center animate-pulse text-xl">
-                Carregando produtos...
+                {!heroVisible ? "Aguarde..." : "Carregando produtos..."}
               </div>
             )}
           </div>
@@ -546,108 +594,104 @@ export default function HomePage() {
         </section>
 
         {/* ============================================================
-            3. COMEBACKS & LANÇAMENTOS (filtrados)
-            ============================================================ */}
+    3. MAIS VENDIDOS (Top Clicks)
+    ============================================================ */}
         <section id="produtos" className="py-20 max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4 animate-fade-in-up">
             <div>
               <span className="text-pink-500 font-semibold uppercase tracking-wider text-sm">
-                Urgência de Fandom
+                Escolha dos Fãs
               </span>
               <h2
                 className="text-3xl md:text-4xl font-bold tracking-tight mt-1 bg-gradient-to-r from-pink-400 via-purple-400 to-pink-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-[shimmer_4s_linear_infinite]"
                 style={{ fontFamily: "var(--font-montserrat)" }}
               >
-                Comebacks & Pré-vendas Quentes
+                Os Mais Comprados da Semana
               </h2>
             </div>
-            <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 px-4 py-2.5 rounded-xl hover:border-pink-500/50 transition-colors">
-              <Clock className="w-5 h-5 text-pink-500" />
-              <span className="text-sm text-zinc-400">Encerra em:</span>
-              <span className="font-mono font-bold text-pink-400">
-                {String(timeLeft.hours).padStart(2, "0")}:
-                {String(timeLeft.minutes).padStart(2, "0")}:
-                {String(timeLeft.seconds).padStart(2, "0")}
-              </span>
-            </div>
+            <Link
+              href="/product"
+              className="text-pink-400 hover:text-pink-300 text-sm font-medium flex items-center gap-1 transition-colors"
+            >
+              Ver todos <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
           {loading ? (
             <div className="text-center py-20 text-zinc-500 animate-pulse">
-              Carregando acervo oficial...
-            </div>
-          ) : comebackProducts.length === 0 ? (
-            <div className="text-center py-20 text-zinc-400 border border-dashed border-zinc-700 rounded-2xl animate-fade-in">
-              <p className="text-lg">
-                Nenhum comeback ou pré-venda no momento.
-              </p>
-              <p className="text-sm text-zinc-500">
-                Fique ligado, em breve teremos novidades!
-              </p>
+              Carregando os tops...
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {comebackProducts.map((product, idx) => (
-                <div
-                  key={product.id}
-                  className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 group flex flex-col justify-between hover:shadow-2xl hover:shadow-pink-500/10 hover:-translate-y-1 animate-fade-in-up"
-                  style={{ animationDelay: `${idx * 0.1}s` }}
-                >
-                  <div>
-                    <div className="relative aspect-[4/5] overflow-hidden bg-zinc-950">
-                      <Image
-                        src={product.image_url}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-700"
-                        sizes="(max-width: 768px) 100vw, 25vw"
-                      />
-                      <span
-                        className={`absolute top-3 left-3 text-xs font-bold px-3 py-1 rounded-full shadow-md ${
-                          product.type === "digital"
-                            ? "bg-green-600 text-white"
-                            : "bg-pink-600 text-white"
-                        }`}
-                      >
-                        {product.type === "digital"
-                          ? "📘 Digital"
-                          : "📦 Shopee"}
-                      </span>
-                    </div>
-                    <div className="p-5">
-                      <h3
-                        className="font-semibold text-zinc-100 mt-1 line-clamp-2 group-hover:text-pink-400 transition-colors"
-                        style={{ fontFamily: "var(--font-montserrat)" }}
-                      >
-                        {product.name}
-                      </h3>
-                      <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
-                        {product.description}
-                      </p>
-                      <div className="mt-3 text-lg font-bold text-white">
-                        {product.price
-                          ? `R$ ${product.price.toFixed(2)}`
-                          : "Consulte"}
+              {products
+                .sort((a, b) => (b.clicks_total || 0) - (a.clicks_total || 0))
+                .slice(0, 8)
+                .map((product, idx) => (
+                  <div
+                    key={product.id}
+                    className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 group flex flex-col justify-between hover:shadow-2xl hover:shadow-pink-500/10 hover:-translate-y-1 animate-fade-in-up"
+                    style={{ animationDelay: `${idx * 0.1}s` }}
+                  >
+                    <div>
+                      <div className="relative aspect-[4/5] overflow-hidden bg-zinc-950">
+                        <Image
+                          src={product.image_url}
+                          alt={product.name}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-700"
+                          sizes="(max-width: 768px) 100vw, 25vw"
+                        />
+                        <span
+                          className={`absolute top-3 left-3 text-xs font-bold px-3 py-1 rounded-full shadow-md ${
+                            product.type === "digital"
+                              ? "bg-green-600 text-white"
+                              : "bg-pink-600 text-white"
+                          }`}
+                        >
+                          {product.type === "digital"
+                            ? "📘 Digital"
+                            : "📦 Shopee"}
+                        </span>
+                        {product.clicks_total > 10 && (
+                          <span className="absolute top-3 right-3 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+                            🔥 Hit
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-5">
+                        <h3
+                          className="font-semibold text-zinc-100 mt-1 line-clamp-2 group-hover:text-pink-400 transition-colors"
+                          style={{ fontFamily: "var(--font-montserrat)" }}
+                        >
+                          {product.name}
+                        </h3>
+                        <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
+                          {product.description}
+                        </p>
+                        <div className="mt-3 text-lg font-bold text-white">
+                          {product.price
+                            ? `R$ ${product.price.toFixed(2)}`
+                            : "Consulte"}
+                        </div>
                       </div>
                     </div>
+                    <div className="p-5 pt-0 flex gap-2">
+                      <Link
+                        href={`/product/${product.id}`}
+                        className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2.5 rounded-xl transition-colors text-center text-sm flex items-center justify-center gap-1 hover:gap-2"
+                      >
+                        Detalhes
+                      </Link>
+                      <button
+                        onClick={() => handleAffiliateClick(product)}
+                        className="bg-pink-600 hover:bg-pink-500 text-white font-medium py-2.5 px-3 rounded-xl transition-all flex items-center justify-center hover:scale-105"
+                        title="Ir para o parceiro"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-5 pt-0 flex gap-2">
-                    <Link
-                      href={`/product/${product.id}`}
-                      className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2.5 rounded-xl transition-colors text-center text-sm flex items-center justify-center gap-1 hover:gap-2"
-                    >
-                      Detalhes
-                    </Link>
-                    <button
-                      onClick={() => handleAffiliateClick(product)}
-                      className="bg-pink-600 hover:bg-pink-500 text-white font-medium py-2.5 px-3 rounded-xl transition-all flex items-center justify-center hover:scale-105"
-                      title="Ir para o parceiro"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </section>
@@ -673,7 +717,11 @@ export default function HomePage() {
               {groups.map((group, idx) => (
                 <button
                   key={idx}
-                  onClick={() => alert(`Filtrando produtos de ${group.name}`)}
+                  onClick={() =>
+                    router.push(
+                      `/product?artist=${encodeURIComponent(group.name)}`,
+                    )
+                  }
                   className={`bg-gradient-to-br ${group.color} p-6 rounded-2xl border border-zinc-700/50 hover:border-pink-500 transition-all flex flex-col items-center justify-center gap-3 group shadow-lg hover:shadow-pink-500/20 hover:-translate-y-1 hover:scale-105 duration-300 animate-fade-in-up`}
                   style={{ animationDelay: `${idx * 0.08}s` }}
                 >
@@ -792,55 +840,55 @@ export default function HomePage() {
           </div>
         </section>
 
-       {/* ============================================================
+        {/* ============================================================
     6. BENEFÍCIOS DETALHADOS – Afiliados + Produtos Digitais
     ============================================================ */}
-<section className="py-16 bg-zinc-900/20 border-t border-zinc-800">
-  <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-    {[
-      {
-        icon: <ShieldCheck className="w-6 h-6" />,
-        title: "Parceiros Confiáveis",
-        desc: "Trabalhamos com Amazon, Shopee e Hotmart – plataformas seguras com política de reembolso, compra protegida e pagamentos via Pix, cartão ou boleto.",
-      },
-      {
-        icon: <Package className="w-6 h-6" />,
-        title: "Produtos Verificados",
-        desc: "Todos os links levam a vendedores oficiais com alta reputação. Produtos originais, físicos ou digitais, com garantia e suporte das próprias plataformas.",
-      },
-      {
-        icon: <CheckCircle2 className="w-6 h-6" />,
-        title: "Suporte Rápido",
-        desc: "Tire suas dúvidas sobre produtos, rastreio de pedidos ou downloads com nosso atendimento humanizado via WhatsApp e e-mail, de segunda a sexta.",
-      },
-    ].map((item, idx) => (
-      <div
-        key={idx}
-        className="flex gap-4 group hover:bg-zinc-800/30 p-4 rounded-xl transition-all duration-300 animate-fade-in-up"
-        style={{ animationDelay: `${idx * 0.1}s` }}
-      >
-        <div className="w-12 h-12 rounded-xl bg-pink-600/10 border border-pink-500/20 flex items-center justify-center shrink-0 text-pink-400 group-hover:bg-pink-600/20 group-hover:border-pink-500/40 transition-all group-hover:scale-110">
-          {item.icon}
-        </div>
-        <div>
-          <h3
-            className="font-semibold text-lg text-white mb-1 group-hover:text-pink-400 transition-colors"
-            style={{ fontFamily: "var(--font-montserrat)" }}
-          >
-            {item.title}
-          </h3>
-          <p className="text-zinc-400 text-sm group-hover:text-zinc-300 transition-colors">
-            {item.desc}
-          </p>
-        </div>
-      </div>
-    ))}
-  </div>
-</section>
+        <section className="py-16 bg-zinc-900/20 border-t border-zinc-800">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <ShieldCheck className="w-6 h-6" />,
+                title: "Parceiros Confiáveis",
+                desc: "Trabalhamos com Amazon, Shopee e Hotmart – plataformas seguras com política de reembolso, compra protegida e pagamentos via Pix, cartão ou boleto.",
+              },
+              {
+                icon: <Package className="w-6 h-6" />,
+                title: "Produtos Verificados",
+                desc: "Todos os links levam a vendedores oficiais com alta reputação. Produtos originais, físicos ou digitais, com garantia e suporte das próprias plataformas.",
+              },
+              {
+                icon: <CheckCircle2 className="w-6 h-6" />,
+                title: "Suporte Rápido",
+                desc: "Tire suas dúvidas sobre produtos, rastreio de pedidos ou downloads com nosso atendimento humanizado via WhatsApp e e-mail, de segunda a sexta.",
+              },
+            ].map((item, idx) => (
+              <div
+                key={idx}
+                className="flex gap-4 group hover:bg-zinc-800/30 p-4 rounded-xl transition-all duration-300 animate-fade-in-up"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <div className="w-12 h-12 rounded-xl bg-pink-600/10 border border-pink-500/20 flex items-center justify-center shrink-0 text-pink-400 group-hover:bg-pink-600/20 group-hover:border-pink-500/40 transition-all group-hover:scale-110">
+                  {item.icon}
+                </div>
+                <div>
+                  <h3
+                    className="font-semibold text-lg text-white mb-1 group-hover:text-pink-400 transition-colors"
+                    style={{ fontFamily: "var(--font-montserrat)" }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p className="text-zinc-400 text-sm group-hover:text-zinc-300 transition-colors">
+                    {item.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ============================================================
-            7. CTA FINAL / LISTA DE ESPERA
-            ============================================================ */}
+    7. CTA FINAL / LISTA DE ESPERA (com Formspree)
+    ============================================================ */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-zinc-900/50 to-zinc-950 border-t border-zinc-800">
           <div className="absolute inset-0 bg-gradient-to-r from-pink-600/5 to-purple-600/5" />
           <div className="max-w-3xl mx-auto px-4 text-center relative z-10 animate-fade-in-up">
@@ -856,25 +904,68 @@ export default function HomePage() {
             </p>
 
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                alert("Inscrito com sucesso!");
-              }}
+              onSubmit={handleSubscribe}
               className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
             >
               <input
                 type="email"
+                name="email"
                 placeholder="Seu melhor e-mail..."
                 required
-                className="bg-zinc-900 border border-zinc-800 px-4 py-3.5 rounded-xl flex-grow text-zinc-100 focus:outline-none focus:border-pink-500 transition-colors hover:border-zinc-600"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading || success}
+                className="bg-zinc-900 border border-zinc-800 px-4 py-3.5 rounded-xl flex-grow text-zinc-100 focus:outline-none focus:border-pink-500 transition-colors hover:border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 type="submit"
-                className="bg-pink-600 hover:bg-pink-500 text-white font-bold px-6 py-3.5 rounded-xl transition-all shrink-0 shadow-lg shadow-pink-600/20 hover:shadow-pink-600/40 hover:scale-105"
+                disabled={loading || success}
+                className="bg-pink-600 hover:bg-pink-500 text-white font-bold px-6 py-3.5 rounded-xl transition-all shrink-0 shadow-lg shadow-pink-600/20 hover:shadow-pink-600/40 hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[140px]"
               >
-                Quero Participar
+                {loading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Enviando...
+                  </>
+                ) : success ? (
+                  "✅ Inscrito!"
+                ) : (
+                  "Quero Participar"
+                )}
               </button>
             </form>
+
+            {/* Mensagem de feedback */}
+            {success && (
+              <p className="text-green-400 text-sm mt-3 animate-fade-in">
+                🎉 Você está na lista VIP! Em breve receberá novidades.
+              </p>
+            )}
+            {error && (
+              <p className="text-red-400 text-sm mt-3 animate-fade-in">
+                ❌ Ocorreu um erro. Tente novamente ou entre em contato.
+              </p>
+            )}
+
             <span className="text-xs text-zinc-500 mt-3 block">
               Zero spam. Apenas avisos importantes do seu fandom.
             </span>
@@ -882,46 +973,35 @@ export default function HomePage() {
         </section>
 
         {/* ============================================================
-            RODAPÉ
-            ============================================================ */}
-        <footer className="border-t border-zinc-800/80 bg-zinc-950 py-12 text-zinc-500 text-sm">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-            <div>
-              <span
-                className="font-bold text-white tracking-wider"
-                style={{ fontFamily: "var(--font-montserrat)" }}
-              >
-                BORA HAUS
-              </span>
-              <p className="text-xs mt-1">
-                Sua curadoria definitiva de K-pop e colecionáveis.
-              </p>
-            </div>
-            {/* <div className="flex gap-6 text-zinc-400">
-              <a
-                href="#termos"
-                className="hover:text-pink-500 transition-colors"
-              >
-                Termos de Uso
-              </a>
-              <a
-                href="#privacidade"
-                className="hover:text-pink-500 transition-colors"
-              >
-                Política de Privacidade
-              </a>
-              <a
-                href="#contato"
-                className="hover:text-pink-500 transition-colors"
-              >
-                Contato
-              </a>
-            </div> */}
-            <p className="text-xs">
-              © 2026 BORA HAUS. Todos os direitos reservados.
-            </p>
-          </div>
-        </footer>
+    RODAPÉ
+    ============================================================ */}
+<footer className="border-t border-zinc-800/80 bg-zinc-950 py-12 text-zinc-500 text-sm">
+  <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+    <div>
+      <span
+        className="font-bold text-white tracking-wider"
+        style={{ fontFamily: "var(--font-montserrat)" }}
+      >
+        BORA HAUS
+      </span>
+      <p className="text-xs mt-1">
+        Sua curadoria definitiva de K-pop e colecionáveis.
+      </p>
+    </div>
+
+    {/* Link discreto para admin */}
+    <Link
+      href="/admin/login"
+      className="text-xs text-zinc-600 hover:text-pink-400 transition-colors flex items-center gap-1"
+    >
+      <span>🔑</span> Admin
+    </Link>
+
+    <p className="text-xs">
+      © 2026 BORA HAUS. Todos os direitos reservados.
+    </p>
+  </div>
+</footer>
       </div>
     </>
   );

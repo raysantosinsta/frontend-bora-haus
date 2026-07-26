@@ -58,7 +58,7 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-zinc-400 text-center">
           <p className="text-xl">Produto não encontrado</p>
-          <Link href="/produtos" className="text-pink-500 hover:underline mt-2 block">
+          <Link href="/product" className="text-pink-500 hover:underline mt-2 block">
             Voltar ao catálogo
           </Link>
         </div>
@@ -74,7 +74,7 @@ export default function ProductDetailPage() {
       <div className="border-b border-zinc-800 bg-zinc-900/30 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
-            href="/produtos"
+            href="/product"
             className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" /> Voltar ao catálogo

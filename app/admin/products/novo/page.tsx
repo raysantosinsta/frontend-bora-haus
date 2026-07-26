@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { useAdminAuth } from "@/app/hooks/useAdminAuth";
 import {
-  ArrowLeft,
-  Upload,
-  X,
-  Image as ImageIcon,
-  Loader2,
-  CheckCircle,
   AlertCircle,
+  ArrowLeft,
+  CheckCircle,
+  Loader2,
+  Upload,
+  X
 } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 
 export default function NovoProdutoPage() {
   const router = useRouter();
@@ -31,6 +31,16 @@ export default function NovoProdutoPage() {
   // Arquivos selecionados
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+
+    const { isAuthenticated } = useAdminAuth(true);
+  
+    if (isAuthenticated === null) {
+      return <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">Verificando acesso...</div>;
+    }
+  
+    if (!isAuthenticated) {
+      return null; // redireciona para /admin/login
+    }
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -115,7 +125,7 @@ export default function NovoProdutoPage() {
 
       setSuccess(true);
       // Limpar formulário...
-      setTimeout(() => router.push("/admin/produtos"), 2000);
+      setTimeout(() => router.push("/product"), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar produto");
     } finally {
