@@ -1,7 +1,9 @@
 "use client";
 
-import type { Product } from "@/app/lib/api";
-import { fetchProducts } from "@/app/lib/api";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import {
   ChevronDown,
   ExternalLink,
@@ -11,12 +13,25 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 
+import type { Product } from "@/app/lib/api";
+import { fetchProducts } from "@/app/lib/api";
+
+// ============================================================
+// Componente principal (encapsula em Suspense)
+// ============================================================
 export default function CatalogoPage() {
+  return (
+    <Suspense fallback={<CatalogoSkeleton />}>
+      <CatalogoContent />
+    </Suspense>
+  );
+}
+
+// ============================================================
+// Conteúdo real (usa useSearchParams)
+// ============================================================
+function CatalogoContent() {
   const searchParams = useSearchParams();
   const artistParam = searchParams.get("artist") || "";
 
@@ -65,8 +80,9 @@ export default function CatalogoPage() {
     setFilteredProducts(result);
   }, [searchTerm, filterType, products]);
 
+  // ===== SEGURO: window.open somente no cliente =====
   const handleAffiliateClick = (product: Product) => {
-    if (product.affiliate_url) {
+    if (product.affiliate_url && typeof window !== "undefined") {
       window.open(product.affiliate_url, "_blank");
     }
   };
@@ -184,7 +200,37 @@ export default function CatalogoPage() {
 }
 
 // ============================================================
-// ProductCard com carrossel de imagens
+// SKELETON (fallback do Suspense)
+// ============================================================
+function CatalogoSkeleton() {
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="border-b border-zinc-800 bg-zinc-900/30 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-12 w-48 bg-zinc-700 rounded animate-pulse" />
+          <div className="h-4 w-32 bg-zinc-700 rounded mt-2 animate-pulse" />
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="aspect-square bg-zinc-800 animate-pulse" />
+              <div className="p-5 space-y-3">
+                <div className="h-5 bg-zinc-700 rounded w-3/4 animate-pulse" />
+                <div className="h-4 bg-zinc-700 rounded w-full animate-pulse" />
+                <div className="h-6 bg-zinc-700 rounded w-1/3 animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ProductCard (com carrossel interno)
 // ============================================================
 function ProductCard({
   product,
@@ -193,10 +239,8 @@ function ProductCard({
   product: Product;
   onAffiliateClick: (p: Product) => void;
 }) {
-  // Estado para controlar o índice da imagem atual
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Determina a lista de imagens (usa images se existir, senão usa image_url)
   const images =
     product.images && product.images.length > 0
       ? product.images
@@ -220,7 +264,6 @@ function ProductCard({
 
   return (
     <div className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 group flex flex-col hover:-translate-y-1 hover:shadow-2xl hover:shadow-pink-500/10">
-      {/* Container da imagem com carrossel */}
       <div className="relative aspect-square overflow-hidden bg-zinc-800">
         <Image
           src={images[currentImageIndex] || "/placeholder.png"}
@@ -230,7 +273,6 @@ function ProductCard({
           sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 25vw"
         />
 
-        {/* Badge de tipo */}
         <span
           className={`absolute top-3 left-3 text-xs font-bold px-3 py-1 rounded-full shadow-md z-10 ${
             product.type === "digital"
@@ -241,7 +283,6 @@ function ProductCard({
           {product.type === "digital" ? "📘 Digital" : "📦 Físico"}
         </span>
 
-        {/* Setas de navegação (apenas se houver múltiplas imagens) */}
         {hasMultipleImages && (
           <>
             <button
@@ -257,7 +298,6 @@ function ProductCard({
               <ChevronRight className="w-4 h-4" />
             </button>
 
-            {/* Dots indicadores */}
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-20">
               {images.map((_, idx) => (
                 <button
@@ -278,7 +318,6 @@ function ProductCard({
         )}
       </div>
 
-      {/* Informações do produto */}
       <div className="p-5 flex flex-col flex-1">
         <h3
           className="font-semibold text-zinc-100 text-lg line-clamp-2 group-hover:text-pink-400 transition-colors"
@@ -315,7 +354,7 @@ function ProductCard({
 }
 
 // ============================================================
-// ProductListItem (visualização em lista)
+// ProductListItem (modo lista)
 // ============================================================
 function ProductListItem({
   product,
@@ -326,7 +365,6 @@ function ProductListItem({
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 flex flex-col sm:flex-row gap-4 p-4 hover:shadow-xl hover:shadow-pink-500/5">
-      {/* Imagem (apenas a primeira) */}
       <div className="relative w-full sm:w-40 h-40 sm:h-40 rounded-xl overflow-hidden flex-shrink-0 bg-zinc-800">
         <Image
           src={product.image_url || "/placeholder.png"}
@@ -346,7 +384,6 @@ function ProductListItem({
         </span>
       </div>
 
-      {/* Conteúdo */}
       <div className="flex-1 flex flex-col justify-between">
         <div>
           <h3
