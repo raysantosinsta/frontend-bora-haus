@@ -38,15 +38,7 @@ export default function EditarProdutoPage() {
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [newPreviews, setNewPreviews] = useState<string[]>([]);
 
-    const { isAuthenticated } = useAdminAuth(true);
-  
-    if (isAuthenticated === null) {
-      return <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">Verificando acesso...</div>;
-    }
-  
-    if (!isAuthenticated) {
-      return null; // redireciona para /admin/login
-    }
+ 
 
   // Carregar dados do produto
   useEffect(() => {
@@ -164,6 +156,16 @@ export default function EditarProdutoPage() {
       setSaving(false);
     }
   };
+
+     const { isAuthenticated } = useAdminAuth(true);
+  
+    if (isAuthenticated === null) {
+      return <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">Verificando acesso...</div>;
+    }
+  
+    if (!isAuthenticated) {
+      return null; // redireciona para /admin/login
+    }
 
   if (loading) {
     return (
