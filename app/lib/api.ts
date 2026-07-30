@@ -1,6 +1,6 @@
+// lib/api.ts
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3334';
 
-// lib/api.ts
 export interface Product {
   id: string;
   name: string;
@@ -8,23 +8,29 @@ export interface Product {
   price: number | null;
   type: 'digital' | 'affiliate';
   affiliate_url: string;
-  image_path: string;        // caminho da imagem principal (deprecated, mas mantido)
-  image_url: string;         // URL da primeira imagem (capa)
-  images: string[];          // 🆕 array com todas as URLs das imagens
+  image_path: string;
+  image_url: string;
+  images: string[];
   clicks_total: number;
   created_at: string;
 }
 
 export async function fetchProducts(): Promise<Product[]> {
-    console.log('📡 Buscando produtos em:', `${API_URL}/products`);
+  console.log('🔍 API_URL =', API_URL);
+  console.log('📡 Buscando produtos em:', `${API_URL}/products`);
 
-  const res = await fetch(`${API_URL}/products`, { cache: 'no-store' }); // SSR sempre fresco
+  const res = await fetch(`${API_URL}/products`, {
+    // Cache por 60 segundos, após isso revalida em background
+    next: { revalidate: 60 },
+  });
   if (!res.ok) throw new Error('Erro ao buscar produtos');
   return res.json();
 }
 
 export async function fetchProduct(id: string): Promise<Product> {
-  const res = await fetch(`${API_URL}/products/${id}`, { cache: 'no-store' });
+  const res = await fetch(`${API_URL}/products/${id}`, {
+    next: { revalidate: 60 },
+  });
   if (!res.ok) throw new Error('Erro ao buscar produto');
   return res.json();
 }
@@ -33,7 +39,7 @@ export async function createProduct(data: FormData, apiKey: string): Promise<Pro
   const res = await fetch(`${API_URL}/products`, {
     method: 'POST',
     headers: { 'x-api-key': apiKey },
-    body: data, // FormData com os campos + arquivo
+    body: data,
   });
   if (!res.ok) throw new Error('Erro ao criar produto');
   return res.json();

@@ -9,10 +9,8 @@ import {
   Truck,
   Package,
   Sparkles,
-  Flame,
   ArrowRight,
   Star,
-  Clock,
   CheckCircle2,
   ExternalLink,
   ChevronLeft,
@@ -39,7 +37,7 @@ const openSans = Open_Sans({
 });
 
 // ============================================================
-// 2. INTERFACE (com images)
+// 2. INTERFACE
 // ============================================================
 export interface Product {
   id: string;
@@ -49,8 +47,8 @@ export interface Product {
   type: "digital" | "affiliate";
   affiliate_url: string;
   image_path: string;
-  image_url: string; // capa (primeira imagem)
-  images: string[]; // array com todas as URLs das imagens
+  image_url: string;
+  images: string[];
   clicks_total: number;
   created_at: string;
 }
@@ -98,6 +96,7 @@ const animations = `
 `;
 
 const testimonials = [
+  // ... (mantenha o mesmo array de depoimentos)
   {
     name: "Mariana S.",
     group: "Stray Kids Stan",
@@ -184,23 +183,16 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Índice do slide principal (entre produtos)
   const [currentSlide, setCurrentSlide] = useState(0);
-
-  // Índice da imagem interna de cada produto (chave = productId, valor = índice)
   const [productImageIndexes, setProductImageIndexes] = useState<
     Record<string, number>
   >({});
-
-  // Índice do carrossel de depoimentos
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
-
   const [timeLeft, setTimeLeft] = useState({
     hours: 47,
     minutes: 32,
     seconds: 15,
   });
-
   const [email, setEmail] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(false);
@@ -211,8 +203,7 @@ export default function HomePage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setHeroVisible(true);
-    }, 2500); // 2,5 segundos
-
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -221,7 +212,6 @@ export default function HomePage() {
       try {
         const data = await fetchProducts();
         setProducts(data);
-        // Inicializar índices de imagem para cada produto
         const initialIndexes: Record<string, number> = {};
         data.forEach((p) => {
           initialIndexes[p.id] = 0;
@@ -248,26 +238,16 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Filtro para a seção de Comebacks (descrição contém "comebacks" ou "pré-vendas")
-  const comebackProducts = products.filter((p) => {
-    const desc = p.description?.toLowerCase() || "";
-    return desc.includes("comebacks") || desc.includes("pré-vendas");
-  });
-
   const handleSubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    // Validação básica
     if (!email || !email.includes("@")) {
       setError(true);
       setTimeout(() => setError(false), 3000);
       return;
     }
-
     setLoading(true);
     setError(false);
     setSuccess(false);
-
     try {
       const response = await fetch("https://formspree.io/f/mdarboqa", {
         method: "POST",
@@ -275,18 +255,11 @@ export default function HomePage() {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({
-          email: email,
-          // Opcional: adicione mais campos se quiser
-          // name: "Visitante",
-          // source: "site_principal",
-          timestamp: new Date().toISOString(),
-        }),
+        body: JSON.stringify({ email, timestamp: new Date().toISOString() }),
       });
-
       if (response.ok) {
         setSuccess(true);
-        setEmail(""); // limpa o campo
+        setEmail("");
         setTimeout(() => setSuccess(false), 5000);
       } else {
         throw new Error("Erro no servidor");
@@ -300,7 +273,6 @@ export default function HomePage() {
     }
   };
 
-  // 10 primeiros produtos para o carrossel do Hero
   const heroProducts = products.slice(0, 10);
 
   const nextSlide = () => {
@@ -313,7 +285,6 @@ export default function HomePage() {
     );
   };
 
-  // Funções para navegar nas imagens internas de um produto
   const changeProductImage = (productId: string, newIndex: number) => {
     setProductImageIndexes((prev) => ({
       ...prev,
@@ -328,14 +299,6 @@ export default function HomePage() {
   const groups: Group[] = [
     { name: "BTS", logoText: "BTS", color: "from-purple-900 to-indigo-900" },
     { name: "Stray Kids", logoText: "SKZ", color: "from-red-900 to-zinc-900" },
-    // {
-    //   name: "BLACKPINK",
-    //   logoText: "BP",
-    //   color: "from-pink-900 to-neutral-900",
-    // },
-    // { name: "NewJeans", logoText: "NJ", color: "from-blue-900 to-cyan-900" },
-    // { name: "SEVENTEEN", logoText: "SVT", color: "from-sky-900 to-blue-950" },
-    // { name: "TWICE", logoText: "TW", color: "from-orange-900 to-amber-950" },
   ];
 
   const handleAffiliateClick = (product: Product) => {
@@ -344,6 +307,22 @@ export default function HomePage() {
       window.open(product.affiliate_url, "_blank");
     }
   };
+
+  // Skeletons para loading
+  const ProductSkeleton = () => (
+    <div className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden animate-pulse">
+      <div className="aspect-[4/5] bg-zinc-800"></div>
+      <div className="p-5 space-y-3">
+        <div className="h-4 bg-zinc-700 rounded w-3/4"></div>
+        <div className="h-3 bg-zinc-700 rounded w-1/2"></div>
+        <div className="h-6 bg-zinc-700 rounded w-1/3"></div>
+      </div>
+      <div className="p-5 pt-0 flex gap-2">
+        <div className="flex-1 h-10 bg-zinc-700 rounded-xl"></div>
+        <div className="w-10 h-10 bg-zinc-700 rounded-xl"></div>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -354,10 +333,9 @@ export default function HomePage() {
         style={{ fontFamily: "var(--font-open-sans)" }}
       >
         {/* ============================================================
-    1. HERO – Vídeo + Carrossel com imagens múltiplas por produto
+    1. HERO – Vídeo + Carrossel
     ============================================================ */}
         <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
-          {/* Vídeo de fundo */}
           <video
             autoPlay
             loop
@@ -374,10 +352,8 @@ export default function HomePage() {
             />
           </video>
 
-          {/* Overlay escuro sutil */}
           <div className="absolute inset-0 bg-black/40 z-10" />
 
-          {/* Carrossel centralizado */}
           <div className="relative z-20 w-full max-w-6xl mx-auto px-4 sm:px-6">
             {!loading && heroVisible && heroProducts.length > 0 ? (
               <div className="relative animate-fade-in">
@@ -387,18 +363,13 @@ export default function HomePage() {
                     style={{ transform: `translateX(-${currentSlide * 100}%)` }}
                   >
                     {heroProducts.map((product) => {
-                      // Garantir que images seja um array válido
                       const rawImages =
                         product.images && product.images.length > 0
                           ? product.images
                           : [product.image_url].filter(Boolean);
-
-                      // Se ainda estiver vazio, usar placeholder
                       const productImages =
                         rawImages.length > 0 ? rawImages : ["/placeholder.png"];
-
                       const currentImgIndex = getCurrentImageIndex(product.id);
-                      // Garantir que o índice esteja dentro do array
                       const safeIndex = Math.min(
                         currentImgIndex,
                         productImages.length - 1,
@@ -414,18 +385,17 @@ export default function HomePage() {
                           className="min-w-full flex justify-center items-center px-4"
                         >
                           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 w-full max-w-3xl mx-auto">
-                            {/* Imagem do produto com carrossel interno */}
                             <div className="relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl overflow-hidden flex-shrink-0 bg-zinc-800/50 shadow-2xl ring-1 ring-white/10 group">
                               <Image
                                 src={currentImage}
                                 alt={product.name}
                                 fill
+                                sizes="(max-width: 640px) 192px, (max-width: 768px) 224px, 256px"
                                 className="object-cover transition-transform duration-500 group-hover:scale-105"
                                 priority
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-transparent via-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                              {/* Mini setas internas (se houver mais de 1 imagem) */}
                               {productImages.length > 1 && (
                                 <>
                                   <button
@@ -454,7 +424,6 @@ export default function HomePage() {
                                     <ChevronRight className="w-4 h-4" />
                                   </button>
 
-                                  {/* Dots internos (indicadores de imagem) */}
                                   <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
                                     {productImages.map((_, idx) => (
                                       <button
@@ -472,7 +441,6 @@ export default function HomePage() {
                                     ))}
                                   </div>
 
-                                  {/* Contador de imagens (ex: 2/5) */}
                                   <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm">
                                     {currentImgIndex + 1}/{productImages.length}
                                   </div>
@@ -480,7 +448,6 @@ export default function HomePage() {
                               )}
                             </div>
 
-                            {/* Informações do produto */}
                             <div className="flex-1 text-center md:text-left text-white">
                               <h3
                                 className="text-2xl sm:text-3xl md:text-4xl font-bold line-clamp-2 mb-2"
@@ -511,7 +478,6 @@ export default function HomePage() {
                     })}
                   </div>
 
-                  {/* Setas de navegação entre produtos */}
                   {heroProducts.length > 1 && (
                     <>
                       <button
@@ -530,7 +496,6 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* Dots de navegação entre produtos */}
                 <div className="flex justify-center gap-3 mt-6">
                   {heroProducts.map((_, idx) => (
                     <button
@@ -549,7 +514,6 @@ export default function HomePage() {
                   ))}
                 </div>
 
-                {/* Contador de produtos */}
                 <div className="text-center mt-4 text-white/40 text-sm font-medium tracking-wider">
                   {currentSlide + 1} / {heroProducts.length}
                 </div>
@@ -562,7 +526,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 2. BARRA DE CONFIANÇA – Afiliados + Produtos Digitais */}
+        {/* 2. BARRA DE CONFIANÇA */}
         <section className="border-y border-zinc-800 bg-zinc-900/50 py-4 backdrop-blur-sm animate-fade-in">
           <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             {[
@@ -594,7 +558,7 @@ export default function HomePage() {
         </section>
 
         {/* ============================================================
-    3. MAIS VENDIDOS (Top Clicks)
+    3. MAIS VENDIDOS (com skeletons)
     ============================================================ */}
         <section id="produtos" className="py-20 max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4 animate-fade-in-up">
@@ -618,8 +582,10 @@ export default function HomePage() {
           </div>
 
           {loading ? (
-            <div className="text-center py-20 text-zinc-500 animate-pulse">
-              Carregando os tops...
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <ProductSkeleton key={i} />
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -638,8 +604,8 @@ export default function HomePage() {
                           src={product.image_url}
                           alt={product.name}
                           fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                           className="object-cover group-hover:scale-110 transition-transform duration-700"
-                          sizes="(max-width: 768px) 100vw, 25vw"
                         />
                         <span
                           className={`absolute top-3 left-3 text-xs font-bold px-3 py-1 rounded-full shadow-md ${
@@ -697,8 +663,8 @@ export default function HomePage() {
         </section>
 
         {/* ============================================================
-            4. NAVEGAÇÃO POR GRUPO
-            ============================================================ */}
+    4. NAVEGAÇÃO POR GRUPO
+    ============================================================ */}
         <section className="py-16 bg-zinc-900/30 border-y border-zinc-800">
           <div className="max-w-7xl mx-auto px-4">
             <div className="text-center max-w-xl mx-auto mb-12 animate-fade-in-up">
@@ -738,8 +704,8 @@ export default function HomePage() {
         </section>
 
         {/* ============================================================
-            5. PROVA SOCIAL – Carrossel com imagens reais
-            ============================================================ */}
+    5. PROVA SOCIAL – Carrossel
+    ============================================================ */}
         <section className="py-20 max-w-7xl mx-auto px-4">
           <div className="text-center max-w-xl mx-auto mb-12 animate-fade-in-up">
             <span className="text-pink-500 font-semibold uppercase tracking-wider text-sm">
@@ -757,7 +723,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Container do carrossel */}
           <div className="relative max-w-4xl mx-auto">
             <div className="overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 p-6 md:p-8">
               <div
@@ -771,7 +736,6 @@ export default function HomePage() {
                     key={idx}
                     className="min-w-full px-2 flex flex-col items-center text-center"
                   >
-                    {/* Imagem do depoente (foto real) */}
                     <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-pink-500/30 mb-4 flex-shrink-0 shadow-lg shadow-pink-500/10">
                       <Image
                         src={rev.image}
@@ -801,7 +765,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Setas de navegação */}
             <button
               onClick={() =>
                 setCurrentTestimonial((prev) =>
@@ -823,7 +786,6 @@ export default function HomePage() {
               <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
             </button>
 
-            {/* Dots indicadores */}
             <div className="flex justify-center gap-2 mt-6">
               {testimonials.map((_, idx) => (
                 <button
@@ -841,7 +803,7 @@ export default function HomePage() {
         </section>
 
         {/* ============================================================
-    6. BENEFÍCIOS DETALHADOS – Afiliados + Produtos Digitais
+    6. BENEFÍCIOS
     ============================================================ */}
         <section className="py-16 bg-zinc-900/20 border-t border-zinc-800">
           <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -887,7 +849,7 @@ export default function HomePage() {
         </section>
 
         {/* ============================================================
-    7. CTA FINAL / LISTA DE ESPERA (com Formspree)
+    7. CTA FINAL
     ============================================================ */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-zinc-900/50 to-zinc-950 border-t border-zinc-800">
           <div className="absolute inset-0 bg-gradient-to-r from-pink-600/5 to-purple-600/5" />
@@ -954,7 +916,6 @@ export default function HomePage() {
               </button>
             </form>
 
-            {/* Mensagem de feedback */}
             {success && (
               <p className="text-green-400 text-sm mt-3 animate-fade-in">
                 🎉 Você está na lista VIP! Em breve receberá novidades.
@@ -975,34 +936,36 @@ export default function HomePage() {
         {/* ============================================================
     RODAPÉ
     ============================================================ */}
-<footer className="border-t border-zinc-800/80 bg-zinc-950 py-12 text-zinc-500 text-sm">
-  <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-    <div>
-      <span
-        className="font-bold text-white tracking-wider"
-        style={{ fontFamily: "var(--font-montserrat)" }}
-      >
-        BORA HAUS
-      </span>
-      <p className="text-xs mt-1">
-        Sua curadoria definitiva de K-pop e colecionáveis.
-      </p>
-    </div>
+        <footer className="border-t border-zinc-800/80 bg-zinc-950 py-12 text-zinc-500 text-sm">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+            <div>
+              <span
+                className="font-bold text-white tracking-wider"
+                style={{ fontFamily: "var(--font-montserrat)" }}
+              >
+                BORA HAUS
+              </span>
+              <p className="text-xs mt-1">
+                Sua curadoria definitiva de K-pop e colecionáveis.
+              </p>
+            </div>
 
-    {/* Link discreto para admin */}
-    <Link
-      href="/admin/login"
-      className="text-xs text-zinc-600 hover:text-pink-400 transition-colors flex items-center gap-1"
-    >
-      <span>🔑</span> Admin
-    </Link>
+            <Link
+              href="/admin/login"
+              className="text-xs text-zinc-600 hover:text-pink-400 transition-colors flex items-center gap-1"
+            >
+              <span>🔑</span> Admin
+            </Link>
 
-    <p className="text-xs">
-      © 2026 BORA HAUS. Todos os direitos reservados.
-    </p>
-  </div>
-</footer>
+            <p className="text-xs">
+              © 2026 BORA HAUS. Todos os direitos reservados.
+            </p>
+          </div>
+        </footer>
       </div>
     </>
   );
 }
+
+// 🔹 Adiciona timeout maior para a função serverless (Vercel)
+export const maxDuration = 30;
