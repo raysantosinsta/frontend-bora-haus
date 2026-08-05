@@ -16,7 +16,20 @@ export interface Product {
   categoria: string;
 }
 
+export async function fetchArticles() {
+  const res = await fetch(`${API_URL}/articles`);
+  if (!res.ok) throw new Error(`Erro ${res.status}: ${res.statusText}`);
+  return res.json();
+}
 
+export async function generateArticle() {
+  const res = await fetch(`${API_URL}/articles/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error(`Erro ${res.status}: ${res.statusText}`);
+  return res.json();
+}
 
 export async function fetchProducts(): Promise<Product[]> {
   console.log('🔍 API_URL =', API_URL);

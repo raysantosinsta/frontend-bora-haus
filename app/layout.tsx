@@ -1,8 +1,10 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Inter, Montserrat, Geist } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import { cn } from "@/lib/utils";
+import ToastProvider from "./components/blog-components/ToastProvider"; // importe o ToastProvider
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -37,6 +39,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100">
         <Header />
         <main className="flex-1">{children}</main>
+        <ToastProvider /> {/* Adicionado aqui */}
       </body>
     </html>
   );

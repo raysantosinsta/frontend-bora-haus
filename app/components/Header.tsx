@@ -239,6 +239,14 @@ export default function Header() {
                 Início
               </Link>
 
+              <Link
+                href="/blog-bora-haus"
+                className={`relative nav-link ${pathname === "/blog-bora-haus" ? "text-pink-500" : "hover:text-pink-400"} ${transitionClass}`}
+                onClick={handleRipple}
+              >
+                Blog
+              </Link>
+
               {/* Produtos com HOVER dropdown */}
               <div
                 ref={dropdownContainerRef}
