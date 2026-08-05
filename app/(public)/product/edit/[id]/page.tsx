@@ -7,38 +7,43 @@ import {
   ArrowLeft,
   Upload,
   X,
-  Image as ImageIcon,
   Loader2,
   CheckCircle,
   AlertCircle,
+  Save,
 } from "lucide-react";
 import { useAdminAuth } from "@/app/hooks/useAdminAuth";
 
-export default function EditarProdutoPage() {
+export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
+  const { isAuthenticated } = useAdminAuth(true);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingImage, setDeletingImage] = useState<string | null>(null);
 
-  // Campos do formulário
+  // Form data
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     price: "",
     type: "affiliate" as "digital" | "affiliate",
     affiliate_url: "",
+    categoria: "",
   });
 
-  // Imagens existentes (URLs) e novos arquivos selecionados
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  // Imagens existentes (com url e path)
+  const [existingImages, setExistingImages] = useState<
+    { url: string; path: string }[]
+  >([]);
+
+  // Novos arquivos
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [newPreviews, setNewPreviews] = useState<string[]>([]);
-
- 
 
   // Carregar dados do produto
   useEffect(() => {
@@ -48,14 +53,22 @@ export default function EditarProdutoPage() {
         const res = await fetch(`${apiUrl}/products/${productId}`);
         if (!res.ok) throw new Error("Produto não encontrado");
         const data = await res.json();
+
         setFormData({
           name: data.name || "",
           description: data.description || "",
           price: data.price ? String(data.price) : "",
           type: data.type || "affiliate",
           affiliate_url: data.affiliate_url || "",
+          categoria: data.categoria || "",
         });
-        setExistingImages(data.images || []);
+
+        // Montar lista de imagens existentes
+        const imageList = (data.images || []).map((url: string, index: number) => ({
+          url,
+          path: (data.imagePaths || [])[index] || "",
+        }));
+        setExistingImages(imageList);
       } catch (err) {
         setError("Erro ao carregar produto");
         console.error(err);
@@ -67,25 +80,26 @@ export default function EditarProdutoPage() {
   }, [productId]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
 
-    // Somar aos novos arquivos (máx 10 no total, considerando os existentes)
-    const total = existingImages.length + newFiles.length + files.length;
+    const total = existingImages.length + newFiles.length + selectedFiles.length;
     if (total > 10) {
       alert("Máximo de 10 imagens por produto.");
       return;
     }
 
-    setNewFiles((prev) => [...prev, ...files]);
-    const previews = files.map((file) => URL.createObjectURL(file));
+    setNewFiles((prev) => [...prev, ...selectedFiles]);
+    const previews = selectedFiles.map((file) => URL.createObjectURL(file));
     setNewPreviews((prev) => [...prev, ...previews]);
   };
 
@@ -95,13 +109,44 @@ export default function EditarProdutoPage() {
     setNewPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleRemoveImage = async (imagePath: string) => {
+    if (!confirm("Tem certeza que deseja remover esta imagem?")) return;
+
+    setDeletingImage(imagePath);
+    setError(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3334";
+      const apiKey = process.env.NEXT_PUBLIC_API_KEY || "";
+
+      const res = await fetch(`${apiUrl}/products/${productId}/images`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+        },
+        body: JSON.stringify({ imagePath }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Erro ao deletar imagem");
+      }
+
+      setExistingImages((prev) => prev.filter((img) => img.path !== imagePath));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao deletar imagem");
+    } finally {
+      setDeletingImage(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
     setSuccess(false);
 
-    // Validação simples
     if (!formData.name.trim()) {
       setError("O nome do produto é obrigatório.");
       setSaving(false);
@@ -112,7 +157,6 @@ export default function EditarProdutoPage() {
       setSaving(false);
       return;
     }
-    // Se não houver imagens existentes nem novas, erro
     if (existingImages.length === 0 && newFiles.length === 0) {
       setError("É necessário pelo menos uma imagem.");
       setSaving(false);
@@ -126,8 +170,8 @@ export default function EditarProdutoPage() {
       payload.append("price", formData.price || "0");
       payload.append("type", formData.type);
       payload.append("affiliate_url", formData.affiliate_url);
+      payload.append("categoria", formData.categoria);
 
-      // Envia os novos arquivos (se houver)
       newFiles.forEach((file) => {
         payload.append("files", file);
       });
@@ -149,7 +193,7 @@ export default function EditarProdutoPage() {
       }
 
       setSuccess(true);
-      setTimeout(() => router.push("/admin/products"), 2000);
+      setTimeout(() => router.push("/product"), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao atualizar");
     } finally {
@@ -157,22 +201,16 @@ export default function EditarProdutoPage() {
     }
   };
 
-     const { isAuthenticated } = useAdminAuth(true);
-  
-    if (isAuthenticated === null) {
-      return <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">Verificando acesso...</div>;
-    }
-  
-    if (!isAuthenticated) {
-      return null; // redireciona para /admin/login
-    }
-
-  if (loading) {
+  if (isAuthenticated === null || loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (
@@ -199,7 +237,10 @@ export default function EditarProdutoPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Nome */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-zinc-300 mb-1">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-zinc-300 mb-1"
+            >
               Nome do Produto *
             </label>
             <input
@@ -215,7 +256,10 @@ export default function EditarProdutoPage() {
 
           {/* Descrição */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-zinc-300 mb-1">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-zinc-300 mb-1"
+            >
               Descrição
             </label>
             <textarea
@@ -230,7 +274,10 @@ export default function EditarProdutoPage() {
 
           {/* Preço */}
           <div>
-            <label htmlFor="price" className="block text-sm font-medium text-zinc-300 mb-1">
+            <label
+              htmlFor="price"
+              className="block text-sm font-medium text-zinc-300 mb-1"
+            >
               Preço (R$)
             </label>
             <input
@@ -248,7 +295,10 @@ export default function EditarProdutoPage() {
 
           {/* Tipo */}
           <div>
-            <label htmlFor="type" className="block text-sm font-medium text-zinc-300 mb-1">
+            <label
+              htmlFor="type"
+              className="block text-sm font-medium text-zinc-300 mb-1"
+            >
               Tipo de Produto *
             </label>
             <select
@@ -263,9 +313,37 @@ export default function EditarProdutoPage() {
             </select>
           </div>
 
+          {/* Categoria */}
+          <div>
+            <label
+              htmlFor="categoria"
+              className="block text-sm font-medium text-zinc-300 mb-1"
+            >
+              Categoria
+            </label>
+            <select
+              id="categoria"
+              name="categoria"
+              value={formData.categoria}
+              onChange={handleInputChange}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-pink-500"
+            >
+              <option value="">Selecione uma categoria</option>
+              <option value="album">Álbum</option>
+              <option value="photocards">Photocards</option>
+              <option value="eletronicos">Eletrônicos</option>
+              <option value="roupas">Roupas</option>
+              <option value="livros">Livros</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+
           {/* URL de Afiliado */}
           <div>
-            <label htmlFor="affiliate_url" className="block text-sm font-medium text-zinc-300 mb-1">
+            <label
+              htmlFor="affiliate_url"
+              className="block text-sm font-medium text-zinc-300 mb-1"
+            >
               URL de Afiliado *
             </label>
             <input
@@ -288,16 +366,39 @@ export default function EditarProdutoPage() {
             {/* Imagens existentes */}
             {existingImages.length > 0 && (
               <div className="mb-4">
-                <p className="text-xs text-zinc-500 mb-2">Imagens atuais ({existingImages.length})</p>
+                <p className="text-xs text-zinc-500 mb-2">
+                  Imagens atuais ({existingImages.length})
+                </p>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {existingImages.map((url, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-zinc-800">
-                      <Image src={url} alt={`Imagem ${idx+1}`} fill className="object-cover" />
-                      {/* Não permitimos remover individualmente por simplicidade, mas poderia */}
+                  {existingImages.map((img, idx) => (
+                    <div
+                      key={img.path}
+                      className="relative aspect-square rounded-lg overflow-hidden bg-zinc-800 group"
+                    >
+                      <Image
+                        src={img.url}
+                        alt={`Imagem ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(img.path)}
+                        disabled={deletingImage === img.path}
+                        className="absolute top-1 right-1 bg-red-600 hover:bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                      >
+                        {deletingImage === img.path ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <X className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-zinc-500 mt-2">Para trocar as imagens, envie novas abaixo. As antigas serão substituídas.</p>
+                <p className="text-xs text-zinc-500 mt-2">
+                  Para substituir todas as imagens, envie novos arquivos abaixo.
+                </p>
               </div>
             )}
 
@@ -312,7 +413,9 @@ export default function EditarProdutoPage() {
                   <p className="text-sm text-zinc-400">
                     <span className="font-semibold">Clique para enviar</span> ou arraste
                   </p>
-                  <p className="text-xs text-zinc-500 mt-1">PNG, JPG, WEBP até 10MB (máx. 10)</p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    PNG, JPG, WEBP até 10MB (máx. 10)
+                  </p>
                 </div>
                 <input
                   id="file-upload"
@@ -328,7 +431,7 @@ export default function EditarProdutoPage() {
               </p>
             </div>
 
-            {/* Previews dos novos arquivos */}
+            {/* Previews das novas imagens */}
             {newPreviews.length > 0 && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {newPreviews.map((src, index) => (
@@ -336,7 +439,12 @@ export default function EditarProdutoPage() {
                     key={index}
                     className="relative aspect-square rounded-lg overflow-hidden bg-zinc-800 group"
                   >
-                    <Image src={src} alt={`Novo preview ${index + 1}`} fill className="object-cover" />
+                    <Image
+                      src={src}
+                      alt={`Novo preview ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
                     <button
                       type="button"
                       onClick={() => removeNewFile(index)}
@@ -361,7 +469,9 @@ export default function EditarProdutoPage() {
           {success && (
             <div className="flex items-center gap-2 bg-green-600/20 border border-green-500/30 text-green-400 px-4 py-3 rounded-lg">
               <CheckCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">Produto atualizado com sucesso! Redirecionando...</span>
+              <span className="text-sm">
+                Produto atualizado com sucesso! Redirecionando...
+              </span>
             </div>
           )}
 
@@ -376,7 +486,10 @@ export default function EditarProdutoPage() {
                 Salvando...
               </>
             ) : (
-              "Atualizar Produto"
+              <>
+                <Save className="w-5 h-5" />
+                Atualizar Produto
+              </>
             )}
           </button>
         </form>

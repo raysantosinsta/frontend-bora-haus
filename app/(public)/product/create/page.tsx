@@ -1,51 +1,46 @@
 "use client";
 
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useAdminAuth } from "@/app/hooks/useAdminAuth";
 import {
-  AlertCircle,
   ArrowLeft,
-  CheckCircle,
-  Loader2,
   Upload,
-  X
+  X,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Plus,
 } from "lucide-react";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import React, { useState } from "react";
 
-export default function NovoProdutoPage() {
+export default function CreateProductPage() {
   const router = useRouter();
+  const { isAuthenticated } = useAdminAuth(true); // redireciona se não autenticado
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Campos do formulário
+  // Dados do formulário
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     price: "",
     type: "affiliate" as "digital" | "affiliate",
     affiliate_url: "",
+    categoria: "",
   });
 
   // Arquivos selecionados
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
 
-    const { isAuthenticated } = useAdminAuth(true);
-  
-    if (isAuthenticated === null) {
-      return <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">Verificando acesso...</div>;
-    }
-  
-    if (!isAuthenticated) {
-      return null; // redireciona para /admin/login
-    }
-
+  // Handlers
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -55,21 +50,21 @@ export default function NovoProdutoPage() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Limitar a 10 arquivos
-    const newFiles = [...selectedFiles, ...files].slice(0, 10);
-    setSelectedFiles(newFiles);
+    const total = selectedFiles.length + files.length;
+    if (total > 10) {
+      alert("Máximo de 10 imagens por produto.");
+      return;
+    }
 
-    // Gerar previews
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-    setPreviews(newPreviews);
+    setSelectedFiles((prev) => [...prev, ...files]);
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
+    setPreviews((prev) => [...prev, ...newPreviews]);
   };
 
   const removeFile = (index: number) => {
-    const newFiles = selectedFiles.filter((_, i) => i !== index);
-    setSelectedFiles(newFiles);
-    // Revogar URL do preview removido
     URL.revokeObjectURL(previews[index]);
-    setPreviews(previews.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,7 +73,7 @@ export default function NovoProdutoPage() {
     setError(null);
     setSuccess(false);
 
-    // Validação...
+    // Validações
     if (!formData.name.trim()) {
       setError("O nome do produto é obrigatório.");
       setLoading(false);
@@ -90,30 +85,31 @@ export default function NovoProdutoPage() {
       return;
     }
     if (selectedFiles.length === 0) {
-      setError("Envie pelo menos uma imagem do produto.");
+      setError("É necessário enviar pelo menos uma imagem.");
       setLoading(false);
       return;
     }
 
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3334";
+      const apiKey = process.env.NEXT_PUBLIC_API_KEY || "";
+
       const payload = new FormData();
       payload.append("name", formData.name);
       payload.append("description", formData.description);
       payload.append("price", formData.price || "0");
       payload.append("type", formData.type);
       payload.append("affiliate_url", formData.affiliate_url);
+      payload.append("categoria", formData.categoria);
 
       selectedFiles.forEach((file) => {
         payload.append("files", file);
       });
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3334";
-      const apiKey = process.env.NEXT_PUBLIC_API_KEY || "";
-
       const response = await fetch(`${apiUrl}/products`, {
         method: "POST",
         headers: {
-          "x-api-key": apiKey, // 👈 importante
+          "x-api-key": apiKey,
         },
         body: payload,
       });
@@ -124,8 +120,10 @@ export default function NovoProdutoPage() {
       }
 
       setSuccess(true);
-      // Limpar formulário...
-      setTimeout(() => router.push("/product"), 2000);
+      // Redireciona após 2 segundos
+      setTimeout(() => {
+        router.push("product");
+      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar produto");
     } finally {
@@ -133,11 +131,25 @@ export default function NovoProdutoPage() {
     }
   };
 
+  // Se ainda está verificando autenticação, mostra loader
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+      </div>
+    );
+  }
+
+  // Se não autenticado, o hook já redireciona, mas por segurança:
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       {/* Header */}
       <div className="border-b border-zinc-800 bg-zinc-900/30 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
           <button
             onClick={() => router.back()}
             className="text-zinc-400 hover:text-white transition-colors"
@@ -171,7 +183,7 @@ export default function NovoProdutoPage() {
               value={formData.name}
               onChange={handleInputChange}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
-              placeholder="Ex: Álbum 5-STAR (Stray Kids)"
+              placeholder="Ex: Álbum BTS - BE"
               required
             />
           </div>
@@ -189,7 +201,7 @@ export default function NovoProdutoPage() {
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              rows={3}
+              rows={4}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors resize-y"
               placeholder="Descreva o produto..."
             />
@@ -236,6 +248,31 @@ export default function NovoProdutoPage() {
             </select>
           </div>
 
+          {/* Categoria */}
+          <div>
+            <label
+              htmlFor="categoria"
+              className="block text-sm font-medium text-zinc-300 mb-1"
+            >
+              Categoria
+            </label>
+            <select
+              id="categoria"
+              name="categoria"
+              value={formData.categoria}
+              onChange={handleInputChange}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-pink-500 transition-colors"
+            >
+              <option value="">Selecione uma categoria</option>
+              <option value="album">Álbum</option>
+              <option value="photocards">Photocards</option>
+              <option value="eletronicos">Eletrônicos</option>
+              <option value="roupas">Roupas</option>
+              <option value="livros">Livros</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+
           {/* URL de Afiliado */}
           <div>
             <label
@@ -251,29 +288,33 @@ export default function NovoProdutoPage() {
               value={formData.affiliate_url}
               onChange={handleInputChange}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
-              placeholder="https://shope.ee/..."
+              placeholder="https://..."
               required
             />
           </div>
 
-          {/* Upload de imagens */}
+          {/* Imagens */}
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-1">
               Imagens do Produto *
             </label>
+
+            {/* Área de upload */}
             <div className="mt-1 flex flex-col items-center justify-center w-full">
               <label
                 htmlFor="file-upload"
-                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors"
+                className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors"
               >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className="w-8 h-8 text-zinc-500 mb-2" />
+                  <Upload className="w-10 h-10 text-zinc-500 mb-3" />
                   <p className="text-sm text-zinc-400">
-                    <span className="font-semibold">Clique para enviar</span> ou
-                    arraste
+                    <span className="font-semibold">Clique para enviar</span> ou arraste
                   </p>
                   <p className="text-xs text-zinc-500 mt-1">
-                    PNG, JPG, WEBP até 10MB (máx. 10 arquivos)
+                    PNG, JPG, WEBP até 10MB (máx. 10 imagens)
+                  </p>
+                  <p className="text-xs text-pink-400 mt-2">
+                    {selectedFiles.length} arquivo(s) selecionado(s)
                   </p>
                 </div>
                 <input
@@ -285,12 +326,9 @@ export default function NovoProdutoPage() {
                   className="hidden"
                 />
               </label>
-              <p className="text-xs text-zinc-500 mt-2">
-                {selectedFiles.length} / 10 arquivos selecionados
-              </p>
             </div>
 
-            {/* Previews */}
+            {/* Previews das imagens */}
             {previews.length > 0 && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {previews.map((src, index) => (
@@ -307,7 +345,7 @@ export default function NovoProdutoPage() {
                     <button
                       type="button"
                       onClick={() => removeFile(index)}
-                      className="absolute top-1 right-1 bg-red-600 hover:bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 bg-red-600 hover:bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -334,7 +372,7 @@ export default function NovoProdutoPage() {
             </div>
           )}
 
-          {/* Botão submit */}
+          {/* Botão de submit */}
           <button
             type="submit"
             disabled={loading}
@@ -343,7 +381,7 @@ export default function NovoProdutoPage() {
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Criando...
+                Criando produto...
               </>
             ) : (
               "Criar Produto"

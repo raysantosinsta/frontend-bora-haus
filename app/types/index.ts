@@ -10,4 +10,5 @@ export interface Product {
   images: string[]; // 👈 novo campo
   clicks_total: number;
   created_at: string;
+  categoria: string;
 }

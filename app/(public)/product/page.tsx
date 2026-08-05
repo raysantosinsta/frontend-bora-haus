@@ -12,14 +12,13 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from "lucide-react";
 
 import type { Product } from "@/app/lib/api";
-import { fetchProducts } from "@/app/lib/api";
+import { fetchProducts, registerClick } from "@/app/lib/api";
+import { useAdminAuth } from "@/app/hooks/useAdminAuth";
 
-// ============================================================
-// Componente principal (encapsula em Suspense)
-// ============================================================
 export default function CatalogoPage() {
   return (
     <Suspense fallback={<CatalogoSkeleton />}>
@@ -28,21 +27,23 @@ export default function CatalogoPage() {
   );
 }
 
-// ============================================================
-// Conteúdo real (usa useSearchParams)
-// ============================================================
 function CatalogoContent() {
   const searchParams = useSearchParams();
-  const artistParam = searchParams.get("artist") || "";
+  const searchParam = searchParams.get("search") || "";
+  const categoriaParam = searchParams.get("categoria") || "";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState(artistParam);
+  const [searchTerm, setSearchTerm] = useState(searchParam);
   const [filterType, setFilterType] = useState<"all" | "digital" | "affiliate">("all");
+  const [filterCategory, setFilterCategory] = useState<string>(
+    categoriaParam ? categoriaParam.toLowerCase().trim() : "all"
+  );
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // Carrega os produtos
+  const { isAuthenticated } = useAdminAuth(false);
+
   useEffect(() => {
     async function loadProducts() {
       try {
@@ -58,16 +59,23 @@ function CatalogoContent() {
     loadProducts();
   }, []);
 
-  // Sincroniza searchTerm com o parâmetro da URL
   useEffect(() => {
-    setSearchTerm(artistParam);
-  }, [artistParam]);
+    setSearchTerm(searchParam);
+  }, [searchParam]);
 
-  // Filtros
+  useEffect(() => {
+    setFilterCategory(categoriaParam ? categoriaParam.toLowerCase().trim() : "all");
+  }, [categoriaParam]);
+
   useEffect(() => {
     let result = products;
     if (filterType !== "all") {
       result = result.filter((p) => p.type === filterType);
+    }
+    if (filterCategory !== "all") {
+      result = result.filter(
+        (p) => p.categoria?.toLowerCase().trim() === filterCategory
+      );
     }
     if (searchTerm.trim() !== "") {
       const term = searchTerm.toLowerCase();
@@ -78,33 +86,66 @@ function CatalogoContent() {
       );
     }
     setFilteredProducts(result);
-  }, [searchTerm, filterType, products]);
+  }, [searchTerm, filterType, filterCategory, products]);
 
-  // ===== SEGURO: window.open somente no cliente =====
-  const handleAffiliateClick = (product: Product) => {
-    if (product.affiliate_url && typeof window !== "undefined") {
-      window.open(product.affiliate_url, "_blank");
+  const categoryMap = new Map<string, string>();
+  products.forEach((p) => {
+    if (p.categoria) {
+      const normalized = p.categoria.toLowerCase().trim();
+      if (!categoryMap.has(normalized)) {
+        categoryMap.set(normalized, normalized);
+      }
+    }
+  });
+  const categories = Array.from(categoryMap.keys()).sort();
+
+  const handleBuy = async (product: Product) => {
+    if (!product.affiliate_url) return;
+    try {
+      // Registrar clique
+      const destination = product.type === 'digital' ? 'hotmart' : 'shopee';
+      await registerClick(product.id, destination);
+    } catch (error) {
+      console.error('Erro ao registrar clique:', error);
+    } finally {
+      // Abrir link em nova guia
+      window.open(product.affiliate_url, '_blank');
     }
   };
 
+  const adminReady = isAuthenticated !== null;
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      {/* Cabeçalho */}
+      {/* Cabeçalho - (mesmo código) */}
       <section className="border-b border-zinc-800 bg-zinc-900/30 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1
-            className="text-4xl md:text-5xl font-bold tracking-tight"
-            style={{ fontFamily: "var(--font-montserrat)" }}
-          >
-            Catálogo de Produtos
-          </h1>
-          <p className="text-zinc-400 mt-2">
-            {filteredProducts.length} produtos encontrados
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1
+                className="text-4xl md:text-5xl font-bold tracking-tight"
+                style={{ fontFamily: "var(--font-montserrat)" }}
+              >
+                Catálogo de Produtos
+              </h1>
+              <p className="text-zinc-400 mt-2">
+                {filteredProducts.length} produtos encontrados
+              </p>
+            </div>
+            {adminReady && isAuthenticated && (
+              <Link
+                href="product/create"
+                className="bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 px-5 rounded-lg transition-all shadow-lg shadow-pink-600/20 hover:shadow-pink-600/40 flex items-center gap-2 text-sm whitespace-nowrap"
+              >
+                <Plus className="w-5 h-5" />
+                Novo Produto
+              </Link>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Barra de filtros */}
+      {/* Filtros - (mesmo código) */}
       <section className="border-b border-zinc-800 bg-zinc-900/20 py-4 sticky top-16 z-30 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -118,7 +159,7 @@ function CatalogoContent() {
                 className="w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-10 pr-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
               />
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
               <div className="relative">
                 <select
                   value={filterType}
@@ -133,6 +174,23 @@ function CatalogoContent() {
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
               </div>
+
+              <div className="relative">
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="appearance-none bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 pr-10 text-sm text-zinc-100 focus:outline-none focus:border-pink-500 transition-colors cursor-pointer"
+                >
+                  <option value="all">Todas as categorias</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+              </div>
+
               <div className="flex border border-zinc-700 rounded-lg overflow-hidden">
                 <button
                   onClick={() => setViewMode("grid")}
@@ -179,7 +237,8 @@ function CatalogoContent() {
               <ProductCard
                 key={product.id}
                 product={product}
-                onAffiliateClick={handleAffiliateClick}
+                onBuy={handleBuy}
+                isAdmin={isAuthenticated === true}
               />
             ))}
           </div>
@@ -189,7 +248,8 @@ function CatalogoContent() {
               <ProductListItem
                 key={product.id}
                 product={product}
-                onAffiliateClick={handleAffiliateClick}
+                onBuy={handleBuy}
+                isAdmin={isAuthenticated === true}
               />
             ))}
           </div>
@@ -200,7 +260,7 @@ function CatalogoContent() {
 }
 
 // ============================================================
-// SKELETON (fallback do Suspense)
+// SKELETON (mantido igual)
 // ============================================================
 function CatalogoSkeleton() {
   return (
@@ -230,14 +290,16 @@ function CatalogoSkeleton() {
 }
 
 // ============================================================
-// ProductCard (com carrossel interno)
+// ProductCard (atualizado: usa onBuy)
 // ============================================================
 function ProductCard({
   product,
-  onAffiliateClick,
+  onBuy,
+  isAdmin,
 }: {
   product: Product;
-  onAffiliateClick: (p: Product) => void;
+  onBuy: (product: Product) => void;
+  isAdmin: boolean;
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -263,7 +325,7 @@ function ProductCard({
   };
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 group flex flex-col hover:-translate-y-1 hover:shadow-2xl hover:shadow-pink-500/10">
+    <div className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 group flex flex-col h-full hover:-translate-y-1 hover:shadow-2xl hover:shadow-pink-500/10">
       <div className="relative aspect-square overflow-hidden bg-zinc-800">
         <Image
           src={images[currentImageIndex] || "/placeholder.png"}
@@ -333,16 +395,24 @@ function ProductCard({
           <span className="text-xl font-bold text-white">
             {product.price ? `R$ ${product.price.toFixed(2)}` : "Consulte"}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            {isAdmin && (
+              <Link
+                href={`/product/edit/${product.id}`}
+                className="bg-zinc-700 hover:bg-zinc-600 text-white text-xs sm:text-sm font-medium px-3 py-1.5 rounded-full transition-all whitespace-nowrap"
+              >
+                Editar
+              </Link>
+            )}
             <Link
               href={`/product/${product.id}`}
-              className="bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium px-4 py-2 rounded-full transition-all"
+              className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs sm:text-sm font-medium px-3 py-1.5 rounded-full transition-all whitespace-nowrap"
             >
               Detalhes
             </Link>
             <button
-              onClick={() => onAffiliateClick(product)}
-              className="bg-pink-600 hover:bg-pink-500 text-white text-sm font-medium px-4 py-2 rounded-full transition-all hover:scale-105 shadow-lg shadow-pink-600/20 flex items-center gap-1"
+              onClick={() => onBuy(product)}
+              className="bg-pink-600 hover:bg-pink-500 text-white text-xs sm:text-sm font-medium px-3 py-1.5 rounded-full transition-all hover:scale-105 shadow-lg shadow-pink-600/20 flex items-center gap-1 whitespace-nowrap"
             >
               Comprar <ExternalLink className="w-3 h-3" />
             </button>
@@ -354,14 +424,16 @@ function ProductCard({
 }
 
 // ============================================================
-// ProductListItem (modo lista)
+// ProductListItem (atualizado: usa onBuy)
 // ============================================================
 function ProductListItem({
   product,
-  onAffiliateClick,
+  onBuy,
+  isAdmin,
 }: {
   product: Product;
-  onAffiliateClick: (p: Product) => void;
+  onBuy: (product: Product) => void;
+  isAdmin: boolean;
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 flex flex-col sm:flex-row gap-4 p-4 hover:shadow-xl hover:shadow-pink-500/5">
@@ -400,16 +472,24 @@ function ProductListItem({
           <span className="text-xl font-bold text-white">
             {product.price ? `R$ ${product.price.toFixed(2)}` : "Consulte"}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            {isAdmin && (
+              <Link
+                href={`product/edit/${product.id}`}
+                className="bg-zinc-700 hover:bg-zinc-600 text-white text-xs sm:text-sm font-medium px-3 py-1.5 rounded-full transition-all whitespace-nowrap"
+              >
+                Editar
+              </Link>
+            )}
             <Link
               href={`/product/${product.id}`}
-              className="bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium px-4 py-2 rounded-full transition-all"
+              className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs sm:text-sm font-medium px-3 py-1.5 rounded-full transition-all whitespace-nowrap"
             >
               Detalhes
             </Link>
             <button
-              onClick={() => onAffiliateClick(product)}
-              className="bg-pink-600 hover:bg-pink-500 text-white text-sm font-medium px-5 py-2 rounded-full transition-all hover:scale-105 shadow-lg shadow-pink-600/20 flex items-center gap-1"
+              onClick={() => onBuy(product)}
+              className="bg-pink-600 hover:bg-pink-500 text-white text-xs sm:text-sm font-medium px-3 py-1.5 rounded-full transition-all hover:scale-105 shadow-lg shadow-pink-600/20 flex items-center gap-1 whitespace-nowrap"
             >
               Comprar <ExternalLink className="w-3 h-3" />
             </button>

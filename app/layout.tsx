@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, Montserrat } from "next/font/google";
+import { Inter, Montserrat, Geist } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${montserrat.variable} h-full antialiased`}>
+    <html lang="pt-BR" className={cn("h-full", "antialiased", inter.variable, montserrat.variable, "font-sans", geist.variable)}>
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100">
         <Header />
         <main className="flex-1">{children}</main>

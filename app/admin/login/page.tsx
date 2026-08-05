@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
           "admin-auth=true; path=/; max-age=86400; SameSite=Lax";
         localStorage.setItem("adminAuthenticated", "true");
         localStorage.setItem("adminAuthTime", Date.now().toString());
-        router.push("/admin/products");
+        router.push("/product");
       } else {
         setError("Senha incorreta. Tente novamente.");
         setPassword("");

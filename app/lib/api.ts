@@ -13,7 +13,10 @@ export interface Product {
   images: string[];
   clicks_total: number;
   created_at: string;
+  categoria: string;
 }
+
+
 
 export async function fetchProducts(): Promise<Product[]> {
   console.log('🔍 API_URL =', API_URL);
@@ -45,12 +48,18 @@ export async function createProduct(data: FormData, apiKey: string): Promise<Pro
   return res.json();
 }
 
-export async function registerClick(productId: string, destination: 'hotmart' | 'shopee') {
-  const res = await fetch(`${API_URL}/clicks`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ product_id: productId, destination }),
-  });
-  if (!res.ok) throw new Error('Erro ao registrar clique');
-  return res.json();
+
+export async function registerClick(productId: string, destination: 'shopee' | 'hotmart' | 'affiliate') {
+  try {
+    const response = await fetch(`${API_URL}/products/${productId}/increment-clicks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destination }),
+    });
+    if (!response.ok) {
+      console.warn('Falha ao registrar clique:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Erro ao registrar clique:', error);
+  }
 }

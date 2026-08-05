@@ -2,18 +2,24 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      // 🔹 Permite imagens do Supabase (já existente)
+      // 🔹 Supabase (produtos)
       {
         protocol: 'https',
-              hostname: 'inxltoftznrlihdmgwui.supabase.co',
-
+        hostname: 'inxltoftznrlihdmgwui.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/products/**',
       },
-      // 🔹 Permite imagens do Unsplash (novo – para os depoimentos)
+      // 🔹 Unsplash (depoimentos)
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      // 🔹 Pravatar (avatares das avaliações) – NOVO
+      {
+        protocol: 'https',
+        hostname: 'i.pravatar.cc',
         port: '',
         pathname: '/**',
       },
