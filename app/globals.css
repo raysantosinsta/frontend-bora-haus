@@ -117,6 +117,62 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Animações para a imagem do produto */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.product-image-wrapper {
+  animation: float 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+.product-image-wrapper img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 30px rgba(192, 138, 52, 0.25));
+  transition: transform 0.4s ease, filter 0.4s ease;
+}
+
+.product-image-wrapper:hover img {
+  transform: scale(1.04);
+  filter: drop-shadow(0 20px 50px rgba(192, 138, 52, 0.4));
+}
+
+/* Brilho sutil (opcional) */
+.product-image-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 6s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

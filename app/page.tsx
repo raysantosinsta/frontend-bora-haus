@@ -274,7 +274,22 @@ export default function HomePage() {
     }
   };
 
-  const heroProducts = products.slice(0, 10);
+  // ============================================================
+  // 🔥 ALTERAÇÃO AQUI: Hero usa os produtos mais comprados
+  // ============================================================
+  // Filtra produtos com cliques > 0, ordena por cliques decrescente, pega os 10 primeiros
+  // Se não houver produtos com cliques, usa todos os produtos (fallback)
+  const topProducts = products
+    .filter((p) => (p.clicks_total || 0) > 0)
+    .sort((a, b) => (b.clicks_total || 0) - (a.clicks_total || 0))
+    .slice(0, 10);
+
+  // Fallback: se não houver topProducts, usa todos os produtos (para não deixar vazio)
+  const heroProducts = topProducts.length > 0 ? topProducts : products;
+
+  // ============================================================
+  // FIM DA ALTERAÇÃO
+  // ============================================================
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % heroProducts.length);
@@ -339,7 +354,7 @@ export default function HomePage() {
         style={{ fontFamily: "var(--font-open-sans)" }}
       >
         {/* ============================================================
-    1. HERO – Vídeo + Carrossel
+    1. HERO – Vídeo + Carrossel (agora com topProducts)
     ============================================================ */}
         <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
           <video
@@ -563,114 +578,115 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 3. SEÇÃO "OS MAIS COMPRADOS DA SEMANA" (sem alterações) */}
         <section id="produtos" className="py-20 max-w-7xl mx-auto px-4">
-  <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4 animate-fade-in-up">
-    <div>
-      <span className="text-pink-500 font-semibold uppercase tracking-wider text-sm">
-        Escolha dos Fãs
-      </span>
-      <h2
-        className="text-3xl md:text-4xl font-bold tracking-tight mt-1 bg-gradient-to-r from-pink-400 via-purple-400 to-pink-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-[shimmer_4s_linear_infinite]"
-        style={{ fontFamily: "var(--font-montserrat)" }}
-      >
-        Os Mais Comprados da Semana
-      </h2>
-    </div>
-    <Link
-      href="/product"
-      className="text-pink-400 hover:text-pink-300 text-sm font-medium flex items-center gap-1 transition-colors"
-    >
-      Ver todos <ArrowRight className="w-4 h-4" />
-    </Link>
-  </div>
-
-  {loading ? (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {[...Array(8)].map((_, i) => (
-        <ProductSkeleton key={i} />
-      ))}
-    </div>
-  ) : (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {(() => {
-        const filtered = products.filter(p => (p.clicks_total || 0) > 0);
-        if (filtered.length === 0) {
-          return (
-            <div className="col-span-full text-center py-12 text-zinc-400">
-              <p className="text-lg">Nenhum produto com cliques registrados ainda.</p>
-              <p className="text-sm text-zinc-500 mt-1">Assim que algum produto for comprado, ele aparecerá aqui!</p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4 animate-fade-in-up">
+            <div>
+              <span className="text-pink-500 font-semibold uppercase tracking-wider text-sm">
+                Escolha dos Fãs
+              </span>
+              <h2
+                className="text-3xl md:text-4xl font-bold tracking-tight mt-1 bg-gradient-to-r from-pink-400 via-purple-400 to-pink-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-[shimmer_4s_linear_infinite]"
+                style={{ fontFamily: "var(--font-montserrat)" }}
+              >
+                Os Mais Comprados da Semana
+              </h2>
             </div>
-          );
-        }
-        return filtered
-          .sort((a, b) => (b.clicks_total || 0) - (a.clicks_total || 0))
-          .slice(0, 8)
-          .map((product, idx) => (
-            <div
-              key={product.id}
-              className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 group flex flex-col justify-between hover:shadow-2xl hover:shadow-pink-500/10 hover:-translate-y-1 animate-fade-in-up"
-              style={{ animationDelay: `${idx * 0.1}s` }}
+            <Link
+              href="/product"
+              className="text-pink-400 hover:text-pink-300 text-sm font-medium flex items-center gap-1 transition-colors"
             >
-              <div>
-                <div className="relative aspect-[4/5] overflow-hidden bg-zinc-950">
-                  <Image
-                    src={product.image_url}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                    className="object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <span
-                    className={`absolute top-3 left-3 text-xs font-bold px-3 py-1 rounded-full shadow-md ${
-                      product.type === "digital"
-                        ? "bg-green-600 text-white"
-                        : "bg-pink-600 text-white"
-                    }`}
-                  >
-                    {product.type === "digital" ? "📘 Digital" : "📦 Físico"}
-                  </span>
-                  {product.clicks_total > 10 && (
-                    <span className="absolute top-3 right-3 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
-                      🔥 Hit
-                    </span>
-                  )}
-                </div>
-                <div className="p-5">
-                  <h3
-                    className="font-semibold text-zinc-100 mt-1 line-clamp-2 group-hover:text-pink-400 transition-colors"
-                    style={{ fontFamily: "var(--font-montserrat)" }}
-                  >
-                    {product.name}
-                  </h3>
-                  <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
-                    {product.description}
-                  </p>
-                  <div className="mt-3 text-lg font-bold text-white">
-                    {product.price ? `R$ ${product.price.toFixed(2)}` : "Consulte"}
-                  </div>
-                </div>
-              </div>
-              <div className="p-5 pt-0 flex gap-2">
-                <Link
-                  href={`/product/${product.id}`}
-                  className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2.5 rounded-xl transition-colors text-center text-sm flex items-center justify-center gap-1 hover:gap-2"
-                >
-                  Detalhes
-                </Link>
-                <button
-                  onClick={() => handleBuy(product)}
-                  className="bg-pink-600 hover:bg-pink-500 text-white font-medium py-2.5 px-4 rounded-xl transition-all flex items-center justify-center hover:scale-105 gap-1.5"
-                >
-                  Comprar
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-              </div>
+              Ver todos <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <ProductSkeleton key={i} />
+              ))}
             </div>
-          ));
-      })()}
-    </div>
-  )}
-</section>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {(() => {
+                const filtered = products.filter(p => (p.clicks_total || 0) > 0);
+                if (filtered.length === 0) {
+                  return (
+                    <div className="col-span-full text-center py-12 text-zinc-400">
+                      <p className="text-lg">Nenhum produto com cliques registrados ainda.</p>
+                      <p className="text-sm text-zinc-500 mt-1">Assim que algum produto for comprado, ele aparecerá aqui!</p>
+                    </div>
+                  );
+                }
+                return filtered
+                  .sort((a, b) => (b.clicks_total || 0) - (a.clicks_total || 0))
+                  .slice(0, 8)
+                  .map((product, idx) => (
+                    <div
+                      key={product.id}
+                      className="bg-zinc-900 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-pink-500/50 transition-all duration-300 group flex flex-col justify-between hover:shadow-2xl hover:shadow-pink-500/10 hover:-translate-y-1 animate-fade-in-up"
+                      style={{ animationDelay: `${idx * 0.1}s` }}
+                    >
+                      <div>
+                        <div className="relative aspect-[4/5] overflow-hidden bg-zinc-950">
+                          <Image
+                            src={product.image_url}
+                            alt={product.name}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                            className="object-cover group-hover:scale-110 transition-transform duration-700"
+                          />
+                          <span
+                            className={`absolute top-3 left-3 text-xs font-bold px-3 py-1 rounded-full shadow-md ${
+                              product.type === "digital"
+                                ? "bg-green-600 text-white"
+                                : "bg-pink-600 text-white"
+                            }`}
+                          >
+                            {product.type === "digital" ? "📘 Digital" : "📦 Físico"}
+                          </span>
+                          {product.clicks_total > 10 && (
+                            <span className="absolute top-3 right-3 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+                              🔥 Hit
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-5">
+                          <h3
+                            className="font-semibold text-zinc-100 mt-1 line-clamp-2 group-hover:text-pink-400 transition-colors"
+                            style={{ fontFamily: "var(--font-montserrat)" }}
+                          >
+                            {product.name}
+                          </h3>
+                          <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
+                            {product.description}
+                          </p>
+                          <div className="mt-3 text-lg font-bold text-white">
+                            {product.price ? `R$ ${product.price.toFixed(2)}` : "Consulte"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-5 pt-0 flex gap-2">
+                        <Link
+                          href={`/product/${product.id}`}
+                          className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2.5 rounded-xl transition-colors text-center text-sm flex items-center justify-center gap-1 hover:gap-2"
+                        >
+                          Detalhes
+                        </Link>
+                        <button
+                          onClick={() => handleBuy(product)}
+                          className="bg-pink-600 hover:bg-pink-500 text-white font-medium py-2.5 px-4 rounded-xl transition-all flex items-center justify-center hover:scale-105 gap-1.5"
+                        >
+                          Comprar
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ));
+              })()}
+            </div>
+          )}
+        </section>
 
         {/* ============================================================
     4. NAVEGAÇÃO POR GRUPO
